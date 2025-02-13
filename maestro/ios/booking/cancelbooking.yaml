@@ -1,0 +1,17 @@
+appId: com.zeal.challaztopfade
+name: Verify member can cancel a booking
+tags:
+  - smokeTest
+onFlowStart:
+  - runScript: ../pages/navigation.js
+  - runScript: ../pages/activity.js
+---
+- tapOn:
+    id: ${output.navigation.orderspage}
+- tapOn:
+    point: "50%,22%"
+- tapOn:
+    id: ${output.activity.cancelbooking}
+- tapOn:
+    id: ${output.activity.confirmcancellation}
+- assertVisible: 'Cancelled'

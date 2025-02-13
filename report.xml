@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="iPhone 15 Pro - iOS 17.5 - E65281D0-251D-43AB-99BB-1D80906D68C8" tests="1" failures="1" time="75">
+    <testcase id="Verify member can create a booking successfully" name="Verify member can create a booking successfully" classname="Verify member can create a booking successfully" time="75" status="ERROR">
+      <failure>No visible element found: id: 03:00 pm</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
