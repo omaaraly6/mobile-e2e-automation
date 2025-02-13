@@ -23,15 +23,9 @@ jobs:
       - name: Install Maestro CLI
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
-          
-      - name: List Maestro Directory
-        run: ls -lah maestro
-
-      - name: Verify Maestro Installation
-        run: maestro --version
 
       - name: Start iOS Simulator
         run: xcrun simctl boot "iPhone 15"
 
       - name: Run Maestro Flow
-        run: maestro test maestro/
+        run: ./maestro/maestro test maestro/
