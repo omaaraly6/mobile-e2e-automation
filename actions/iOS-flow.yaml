@@ -3,7 +3,7 @@ name: Run Maestro Flows on iOS
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   maestro-test-ios:
@@ -25,7 +25,7 @@ jobs:
           curl -Ls https://get.maestro.mobile.dev | bash
 
       - name: Start iOS Simulator
-        run: xcrun simctl boot "iPhone 14"
+        run: xcrun simctl boot "iPhone 15"
 
       - name: Run Maestro Flow
-        run: maestro test <path_to_your_flow_directory>
+        run: maestro test maestro/
