@@ -23,7 +23,12 @@ jobs:
       - name: Install Maestro CLI
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
-          export PATH=$PATH:$(pwd)
+      - name: Debug Environment
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "PATH: $PATH"
+          ls -lah $(pwd)
+          which maestro
 
       - name: Verify Maestro Installation
         run: maestro --version
