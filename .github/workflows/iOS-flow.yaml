@@ -23,15 +23,9 @@ jobs:
       - name: Install Maestro CLI
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
-          export PATH="$PATH:$HOME/.maestro/bin"
+          sudo mv $HOME/.maestro/bin/maestro /usr/local/bin/maestro
           which maestro
           maestro --version
-
-      - name: Print PATH
-        run: echo $PATH
-        
-      - name: List /usr/local/bin Directory
-        run: ls -lah /usr/local/bin
 
       - name: Start iOS Simulator
         run: xcrun simctl boot "iPhone 15"
