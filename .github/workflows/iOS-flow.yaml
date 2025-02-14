@@ -22,7 +22,8 @@ jobs:
 
       - name: Install Maestro CLI
         run: |
-          curl -Ls https://get.maestro.mobile.dev | bash
+          brew tap mobile-dev-inc/tap
+          brew install maestro
 
       - name: Start iOS Simulator
         run: xcrun simctl boot "iPhone 15"
