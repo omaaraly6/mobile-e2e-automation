@@ -25,7 +25,7 @@ jobs:
           curl -Ls https://get.maestro.mobile.dev | bash
 
       - name: Start iOS Simulator
-        run: xcrun simctl boot "iPhone 14"
+        run: xcrun simctl boot "iPhone 15"
 
       - name: Run Maestro Flow
         run: maestro test .
