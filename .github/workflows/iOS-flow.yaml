@@ -28,6 +28,6 @@ jobs:
       - name: Start iOS Simulator
         run: xcrun simctl boot "iPhone 15"
       - name: Set Maestro Timeout Environment Variable
-        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=60000" >> $GITHUB_ENV
+        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
       - name: Run Maestro Flow
         run: maestro test .
