@@ -26,6 +26,8 @@ jobs:
           curl -Ls https://get.maestro.mobile.dev | bash
       - name: following instruction
         run: export PATH="$PATH":"$HOME/.maestro/bin"
+      - name: Add /usr/local/bin to PATH
+        run: echo 'export PATH=$PATH:/usr/local/bin' >> $GITHUB_ENV
       - name: Set JAVA_HOME
         run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
       - name: Verify Maestro Installation
