@@ -24,9 +24,11 @@ jobs:
         run: |
           curl -Ls https://get.maestro.mobile.dev | bash
           sudo mv $HOME/.maestro/bin/maestro /usr/local/bin/maestro
+          export PATH="$PATH":"$HOME/.maestro/bin"
+      - name: Verify Maestro Installation
+        run: |
           which maestro
           maestro --version
-
       - name: Start iOS Simulator
         run: xcrun simctl boot "iPhone 15"
 
