@@ -20,11 +20,14 @@ jobs:
       - name: Install Facebook IDB
         run: brew install facebook/fb/idb-companion
 
-      - name: Install Maestro CLI
+      - name: Clean and Reinstall Maestro CLI
         run: |
+          rm -rf ~/.maestro
           curl -Ls https://get.maestro.mobile.dev | bash
-          sudo mv $HOME/.maestro/bin/maestro /usr/local/bin/maestro
-          export PATH="$PATH":"$HOME/.maestro/bin"
+      - name: following instruction
+        run: export PATH="$PATH":"$HOME/.maestro/bin"
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))" >> $GITHUB_ENV
       - name: Verify Maestro Installation
         run: |
           which maestro
