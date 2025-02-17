@@ -33,7 +33,7 @@ jobs:
 
       - name: Download iOS App for Simulator
         run: |
-          curl -o ChallazTopfade.tar.gz "https://expo.dev/artifacts/eas/cGUXUDYCDkFkvc9wy4jN8P.tar.gz"
+          curl -L -o ChallazTopfade.tar.gz "https://expo.dev/artifacts/eas/cGUXUDYCDkFkvc9wy4jN8P.tar.gz"
           tar -xvzf ChallazTopfade.tar.gz
 
       - name: Install iOS App
