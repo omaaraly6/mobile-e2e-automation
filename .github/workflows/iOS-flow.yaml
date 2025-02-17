@@ -34,7 +34,7 @@ jobs:
 
       - name: Download Expo Build
         run: |
-          curl -o ChallazTopfade.app "https://expo.dev/accounts/challaz-topfade/projects/challaz-topfade/builds/5ecaea8e-bb42-415a-8b5d-60fb8921d0bd"
+          curl -o ChallazTopfade.app "https://expo.dev/artifacts/eas/cGUXUDYCDkFkvc9wy4jN8P.tar.gz"
 
       - name: Install iOS App
         run: xcrun simctl install "iPhone 15" ChallazTopfade.app
