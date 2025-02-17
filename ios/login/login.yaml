@@ -27,6 +27,8 @@ onFlowStart:
 - inputText: "01000000001"
 - tapOn: "Continue"
 - tapOn: "Continue"
+- waitForAnimationToEnd:
+    timeout: 1000
 - copyTextFrom:
     id: "otp"
 # - tapOn: "-"
