@@ -29,8 +29,17 @@ jobs:
         run: xcrun simctl boot "iPhone 15"
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
-      - name: Install iOS App
-        run: xcrun simctl install "iPhone 15" iOS_build/ChallazTopfade.app
 
+
+
+      - name: Download Expo Build
+        run: |
+          curl -o ChallazTopfade.app "https://expo.dev/accounts/challaz-topfade/projects/challaz-topfade/builds/5ecaea8e-bb42-415a-8b5d-60fb8921d0bd"
+
+      - name: Install iOS App
+        run: xcrun simctl install "iPhone 15" ChallazTopfade.app
+
+
+        
       - name: Run Maestro Flow
         run: maestro test .
