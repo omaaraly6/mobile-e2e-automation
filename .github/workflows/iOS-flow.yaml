@@ -31,7 +31,7 @@ jobs:
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
 
 
-        - name: Download iOS App for Simulator
+      - name: Download iOS App for Simulator
         run: |
           curl -o ChallazTopfade.tar.gz "https://expo.dev/accounts/challaz-topfade/projects/challaz-topfade/builds/5ecaea8e-bb42-415a-8b5d-60fb8921d0bd"
           tar -xvzf ChallazTopfade.tar.gz
