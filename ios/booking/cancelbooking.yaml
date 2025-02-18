@@ -15,3 +15,5 @@ onFlowStart:
 - tapOn:
     id: ${output.activity.confirmcancellation}
 - assertVisible: 'Cancelled'
+- tapOn:
+    id: ${output.activity.backbtn}

@@ -1,7 +1,7 @@
 appId: com.zeal.challaztopfade
 name: Verify member can logout successfully
-# tags:
-#   - smokeTest
+tags:
+  - smokeTest
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/profilepage.js

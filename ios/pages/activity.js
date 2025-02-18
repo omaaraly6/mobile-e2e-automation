@@ -1,4 +1,5 @@
 output.activity = {
     cancelbooking: 'cancelBooking',
-    confirmcancellation: 'cancelBookingYes'
+    confirmcancellation: 'cancelBookingYes',
+    backbtn: 'back'
 }

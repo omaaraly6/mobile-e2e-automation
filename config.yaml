@@ -11,4 +11,4 @@ executionOrder:
         - Verify member can login successfully
         - Verify member can create a booking successfully
         - Verify member can cancel a booking
-        # - Verify member can logout successfully
+        - Verify member can logout successfully
