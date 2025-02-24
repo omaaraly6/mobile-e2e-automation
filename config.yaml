@@ -12,3 +12,9 @@ executionOrder:
         - Verify member can create a booking successfully
         - Verify member can cancel a booking
         - Verify member can logout successfully
+notifications:
+  email:
+    enabled: true
+    onsSuccess: true
+    recipients:
+      - o.aly@getzeal.io
