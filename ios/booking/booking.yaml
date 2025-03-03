@@ -6,6 +6,7 @@ onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/bookingpage.js
   # - runFlow: ../login/login.yaml
+  #
 ---
 - waitForAnimationToEnd:
     timeout: 2000
