@@ -1,58 +1,62 @@
-name: Android Maestro Tests
+name: Maestro Android E2E
 
 on:
-  push:
-    branches:
-        - master
+  workflow_dispatch:
 
 jobs:
-  maestro-android-tests:
-    name: Run Maestro tests on Android emulator
+  android-e2e:
     runs-on: macos-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
-
-      - name: Set up JDK
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: 17
-
-      # Set up Android Emulator
-      - name: Set up Android Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 26
-          target: google_apis
-          arch: x86_64
-          profile: pixel_7_pro
-          emulator-options: -no-snapshot -no-audio -no-window
-          disable-animations: true
-          script: echo "Emulator started"
-
-      # Wait for emulator to be ready
-      - name: Wait for emulator to be ready
+      
+      - name: Install Homebrew
         run: |
-          adb wait-for-device
-          adb shell getprop sys.boot_completed | grep -m 1 '1'
-          echo "Emulator is ready!"
-
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
       - name: Install Maestro CLI
         run: |
-          curl -Ls https://get.maestro.mobile.dev | bash
-          export PATH="$PATH:$HOME/.maestro/bin"
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
-    
+              brew tap mobile-dev-inc/tap
+              brew install maestro
+
+      - name: Download Android Emulator Image
+        run: |
+          sdkmanager --install "system-images;android-31;google_apis;arm64-v8a"
+
+      - name: Create Android Emulator
+        run: |
+          echo "no" | avdmanager create avd -n pixel7 -k "system-images;android-31;google_apis;arm64-v8a" -d pixel_5
+
+      - name: Start Android Emulator
+        run: |
+          nohup emulator -avd pixel7 -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+
+      - name: Wait for Android Emulator to Boot
+        run: |
+          echo "Waiting for emulator to boot..."
+          adb wait-for-device
+          boot_completed=""
+          while [[ "$boot_completed" != "1" ]]; do
+            sleep 5
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            echo "Boot completed: $boot_completed"
+          done
+          adb shell input keyevent 82  # unlock screen
+          echo "Emulator is ready!"
+
+          
       - name: Download Android APK
         run: |
-          curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/nucrjGpGXJXr6qWFugV7uS.apk"
+            curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/your-artifact-id.apk"
         
       - name: Install APK on Emulator
         run: |
-          adb install ChallazTopfade.apk
-
+            adb install ChallazTopfade.apk
+        
       - name: Run Maestro flow
         run: |
-          maestro test android/
+            maestro test maestro/
