@@ -3,7 +3,7 @@ name: Run Maestro Flows on iOS
 on:
   push:
     branches:
-      - master
+      - test
 
 jobs:
   maestro-test-ios:

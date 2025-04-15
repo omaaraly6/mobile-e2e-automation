@@ -1,25 +1,25 @@
-name: Run Maestro Flows on Android Emulator
+name: Android Maestro Tests
 
 on:
-    push:
-      branches:
-        - master
+  push:
+    branches: [ main ]
 
 jobs:
-  maestro-test:
+  maestro-android-tests:
+    name: Run Maestro tests on Android emulator
     runs-on: macos-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Install Maestro CLI
-      - name: Install Maestro CLI
-        run: |
-          brew tap mobile-dev-inc/tap
-          brew install maestro
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
 
-      # Install Android SDK & Create Emulator
+      # Set up Android Emulator
       - name: Set up Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -38,10 +38,20 @@ jobs:
           adb shell getprop sys.boot_completed | grep -m 1 '1'
           echo "Emulator is ready!"
 
-      # Set custom Maestro timeout (optional)
-      - name: Set Maestro Driver Timeout
-        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=60000" >> $GITHUB_ENV
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls https://get.maestro.mobile.dev | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+    
+      - name: Download Android APK
+        run: |
+          curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/nucrjGpGXJXr6qWFugV7uS.apk"
+        
+      - name: Install APK on Emulator
+        run: |
+          adb install ChallazTopfade.apk
 
-      # Run Maestro Test Flows
-      - name: Run Maestro Tests
-        run: maestro test android/
+      - name: Run Maestro flow
+        run: |
+          maestro test android/
