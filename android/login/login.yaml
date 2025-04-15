@@ -1,0 +1,36 @@
+appId: com.zeal.challaztopfade
+name: Verify member can login successfully
+tags:
+    - smokeTest
+onFlowStart:
+    - runScript: ../pages/loginpage.js
+---
+- launchApp:
+    appId: "com.zeal.challaztopfade"
+    clearState: true
+- assertVisible: "Loyalty Card"
+- tapOn: "Getting Started"
+- assertVisible: "Welcome to Challaz Topfade"
+- tapOn:
+    id: ${output.loginpage.CountryCode}
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    id: ${output.loginpage.SearchInput}
+- inputText: "Egypt"
+- tapOn:
+    id:  ${output.loginpage.Egypt}
+- tapOn:
+    id:  ${output.loginpage.Egypt}
+- tapOn:
+    id: ${output.loginpage.PhoneNumber}
+- inputText: "01000000001"
+- tapOn: "Continue"
+- tapOn: "Continue"
+- waitForAnimationToEnd:
+    timeout: 1000
+- copyTextFrom:
+    id: "otp"
+# - tapOn: "-"
+- pasteText
+- assertVisible: "Hey, Test1"

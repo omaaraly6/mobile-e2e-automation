@@ -42,4 +42,4 @@ jobs:
 
         
       - name: Run Maestro Flow
-        run: maestro test .
+        run: maestro test ios/

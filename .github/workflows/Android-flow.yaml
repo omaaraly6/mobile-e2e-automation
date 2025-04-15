@@ -1,0 +1,41 @@
+name: Run Maestro Flows on Android Emulator
+
+on:
+    push:
+      branches:
+        - master
+
+jobs:
+  maestro-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Install Maestro CLI
+      - name: Install Maestro CLI
+        run: |
+          brew tap mobile-dev-inc/tap
+          brew install maestro
+
+      # Install Android SDK & Create Emulator
+      - name: Set up Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7_pro
+          emulator-options: -no-snapshot -no-audio -no-window
+          disable-animations: true
+          script: |
+            echo "Emulator started"
+
+      # Set custom Maestro timeout (optional)
+      - name: Set Maestro Driver Timeout
+        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=60000" >> $GITHUB_ENV
+
+      # Run Maestro Test Flows
+      - name: Run Maestro Tests
+        run: maestro test android/
