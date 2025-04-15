@@ -29,8 +29,14 @@ jobs:
           profile: pixel_7_pro
           emulator-options: -no-snapshot -no-audio -no-window
           disable-animations: true
-          script: |
-            echo "Emulator started"
+          script: echo "Emulator started"
+
+      # Wait for emulator to be ready
+      - name: Wait for emulator to be ready
+        run: |
+          adb wait-for-device
+          adb shell getprop sys.boot_completed | grep -m 1 '1'
+          echo "Emulator is ready!"
 
       # Set custom Maestro timeout (optional)
       - name: Set Maestro Driver Timeout
