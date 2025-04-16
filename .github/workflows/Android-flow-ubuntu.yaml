@@ -1,8 +1,8 @@
 name: Run Maestro Flows on Android (Ubuntu Runner)
 
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      ANDROID_SDK_ROOT: /opt/android-sdk
-      PATH: /opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/emulator:$PATH
+      ADB_INSTALL_TIMEOUT: 15
 
     steps:
       - name: Checkout code
@@ -23,33 +22,22 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Android SDK Command Line Tools
-        run: |
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-          cd $ANDROID_SDK_ROOT/cmdline-tools
-          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
-          unzip commandlinetools.zip -d latest
-          rm commandlinetools.zip
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 31
+          target: default
+          arch: x86_64
+          profile: nexus5
 
-      - name: Install SDK packages
+      - name: Start Android Emulator
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86"
-
-      - name: Create and Start Emulator
-        run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86" -d "pixel"
-          $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
-          adb wait-for-device
-          # Wait until system is fully booted
-          boot_completed=""
-          until [ "$boot_completed" = "1" ]; do
-            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            sleep 5
-          done
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
+            adb devices
+            emulator -avd nexus5 -no-window -no-audio -no-boot-anim &
+  
+      - name: Wait for emulator to boot
+        run: adb wait-for-device shell 'while [[ $(getprop sys.boot_completed) -ne 1 ]]; do sleep 1; done'
+  
 
       - name: Download APK from Expo
         run: |
