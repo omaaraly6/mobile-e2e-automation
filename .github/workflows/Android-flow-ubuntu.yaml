@@ -1,13 +1,17 @@
 name: Run Maestro Flows on Android (Ubuntu Runner)
 
 on:
-  # push:
-  #   branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   maestro-ubuntu:
     runs-on: ubuntu-latest
+
+    env:
+      ANDROID_SDK_ROOT: /opt/android-sdk
+      PATH: /opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/emulator:$PATH
 
     steps:
       - name: Checkout code
@@ -19,11 +23,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Download APK from Expo
+      - name: Install Android SDK Command Line Tools
         run: |
-          curl -L "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk" -o Challaztopfade.apk
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
+          curl -o commandlinetools.zip https://dl.google.com/android/repository/commandlinetools-linux-10406996_latest.zip
+          unzip commandlinetools.zip -d latest
+          rm commandlinetools.zip
 
-      - name: Install Android SDK packages
+      - name: Install SDK packages
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "emulator" "platforms;android-30" "system-images;android-30;google_apis;x86"
@@ -31,7 +39,7 @@ jobs:
       - name: Create and Start Emulator
         run: |
           echo "no" | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86" -d "pixel"
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+          $ANDROID_SDK_ROOT/emulator/emulator -avd test -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           adb wait-for-device
           # Wait until system is fully booted
           boot_completed=""
@@ -43,13 +51,17 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
 
+      - name: Download APK from Expo
+        run: |
+          curl -L "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk" -o challaztopfade.apk
+
       - name: Install Maestro
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
       - name: Install APK
-        run: adb install Challaztopfade.apk
+        run: adb install challaztopfade.apk
 
       - name: Run Maestro Flows
-        run: maestro test android/
+        run: maestro test path/to/your/flow.yaml
