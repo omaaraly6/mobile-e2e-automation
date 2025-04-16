@@ -1,9 +1,10 @@
 name: Run Maestro Flows on iOS
 
 on:
-  push:
-    branches:
-      - test
+  # push:
+  #   branches:
+  #     - test
+  workflow_dispatch:
 
 jobs:
   maestro-test-ios:
