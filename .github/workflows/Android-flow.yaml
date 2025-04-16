@@ -25,14 +25,15 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-      - name: Install Android system image
-        run: |
-          sdkmanager --install "system-images;android-31;google_apis;x86_64"
+      - name: Install Android system image (API 33, x86_64)
+        run: sdkmanager --install "system-images;android-33;google_apis;x86_64"
+
       - name: Create and start emulator
         run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-31;google_apis;x86_64" -d "pixel"
-          $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
+          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" -d "pixel_5"
+          $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-boot-anim -accel on -no-window &
           adb wait-for-device
+          adb shell getprop sys.boot_completed | grep -m 1 "1"
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
