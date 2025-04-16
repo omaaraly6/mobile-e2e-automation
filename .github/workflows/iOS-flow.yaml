@@ -1,4 +1,4 @@
-name: Run Maestro Flows on iOS
+name: Run Maestro Flows on iOS (macOS runner)
 
 on:
   # push:

@@ -1,4 +1,4 @@
-name: Run Maestro Flows on Android
+name: Run Maestro Flows on Android (macOS runner)
 
 on:
   # push:
