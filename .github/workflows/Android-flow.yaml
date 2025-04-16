@@ -27,10 +27,10 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Install Android system image
         run: |
-          sdkmanager --install "system-images;android-31;google_apis;arm64-v8a"
+          sdkmanager --install "system-images;android-31;google_apis;x86_64"
       - name: Create and start emulator
         run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-31;google_apis;arm64-v8a" -d "pixel_7_pro"
+          echo "no" | avdmanager create avd -n test -k "system-images;android-31;google_apis;x86_64" -d "pixel"
           $ANDROID_HOME/emulator/emulator -avd test -no-window -no-audio -no-boot-anim &
           adb wait-for-device
           adb shell settings put global window_animation_scale 0
