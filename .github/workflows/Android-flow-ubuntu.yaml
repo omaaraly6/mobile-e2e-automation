@@ -19,6 +19,10 @@ jobs:
 
       - name: Install Android SDK
         uses: android-actions/setup-android@v2
+      - name: Install Android System Image for Pixel 7
+        run: |
+          sdkmanager "system-images;android-33;google_apis;arm64-v8a"
+          sdkmanager --update
 
       - name: Create Android Emulator
         run: |
