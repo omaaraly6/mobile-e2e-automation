@@ -13,27 +13,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         
-      - name: Install Homebrew
-        run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          
-      - name: Install Android Command Line Tools
-        run: |
-          brew install --cask android-commandlinetools
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
           
       - name: Setup Android SDK
-        run: |
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0" "system-images;android-33;google_apis;x86_64"
-          
-      - name: Create and Start Android Emulator
-        run: |
-          echo "no" | avdmanager create avd --name test_device --package "system-images;android-33;google_apis;x86_64"
-          $ANDROID_HOME/emulator/emulator -avd test_device -no-audio -no-window -no-boot-anim -gpu swiftshader_indirect &
-          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
-          
+        uses: android-actions/setup-android@v2
+        
       - name: Install Maestro CLI
         run: |
           brew tap mobile-dev-inc/tap
@@ -41,13 +29,18 @@ jobs:
           
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
-        
+          
       - name: Download Android App
         run: |
-          curl -L -o app-release.apk "https://your-android-app-url.apk"
+          curl -L -o challaztopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
           
-      - name: Install Android App
-        run: adb install app-release.apk
-        
-      - name: Run Maestro Tests
-        run: maestro test android/
+      - name: Create and Launch Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel
+          script: |
+            adb install challaztopfade.apk
+            maestro test android/
