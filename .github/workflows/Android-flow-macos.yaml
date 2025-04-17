@@ -1,55 +1,65 @@
-name: Run Maestro Flows on Android (macOS runner)
+name: Android Emulator on macOS
 
 on:
-  # push:
-  #   branches: [main]
   workflow_dispatch:
 
 jobs:
-  maestro-android:
+  run-emulator:
     runs-on: macos-latest
+    timeout-minutes: 30
+
+    env:
+      API_LEVEL: 31
+      EMULATOR_NAME: test-emulator
+      DEVICE: "pixel"
+      APK_URL: "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Download APK from Expo
+      - name: Install dependencies
         run: |
-          curl -L "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk" -o ChallazTopfade.apk
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Install Android system image (API 33, x86_64)
-        run: sdkmanager --install "system-images;android-33;google_apis;x86_64"
+          brew install --cask android-sdk
+          brew install --cask android-platform-tools
+          echo "y" | sdkmanager "platforms;android-${API_LEVEL}" "system-images;android-${API_LEVEL};google_apis;x86_64"
+          sdkmanager --licenses || true
+          echo "ANDROID_HOME=/usr/local/share/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
+          echo "PATH=$ANDROID_HOME/emulator:$PATH" >> $GITHUB_ENV
 
       - name: Create and start emulator
         run: |
-          echo "no" | avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64" -d "pixel_5"
-          $ANDROID_HOME/emulator/emulator -avd test -no-audio -no-boot-anim -accel on -no-window &
+          yes "no" | avdmanager create avd -n $EMULATOR_NAME -k "system-images;android-${API_LEVEL};google_apis;x86_64" -d $DEVICE --force
+          nohup emulator -avd $EMULATOR_NAME -no-snapshot -no-window -gpu off &
+          echo "Waiting for emulator to boot..."
           adb wait-for-device
-          adb shell getprop sys.boot_completed | grep -m 1 "1"
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
+          boot_completed=""
+          until [[ "$boot_completed" == "1" ]]; do
+            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
+            sleep 5
+          done
+          adb shell input keyevent 82
+
+      - name: Download APK
+        run: |
+          curl -o challaztopfade.apk "$APK_URL"
+
+      - name: Install APK on emulator
+        run: |
+          adb install challaztopfade.apk
+          adb shell pm list packages | grep expo || echo "APK may not have installed correctly"
+          - name: Install Homebrew
+          run: |
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
       - name: Install Homebrew
         run: |
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" 
-      - name: Install Maestro
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+      - name: Install Maestro CLI
         run: |
           brew tap mobile-dev-inc/tap
-          brew install maestro   
-          
-      - name: Install APK to Emulator
-        run: |
-          adb install ChallazTopfade.apk
-
-      - name: Run Maestro Flows
-        run: |
-          maestro test android/
+          brew install maestro
+      - name: Run Maestro Flow
+        run: maestro test android/
