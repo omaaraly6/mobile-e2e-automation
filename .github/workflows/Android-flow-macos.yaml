@@ -1,14 +1,69 @@
-name: Maestro Android Test
+# name: Maestro Android Test
+
+# on:
+#   # push:
+#   #   branches:
+#   #     - test
+#   workflow_dispatch:
+
+# jobs:
+#   maestro-test-android:
+#     runs-on: macos-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+        
+#       - name: Setup Java
+#         uses: actions/setup-java@v3
+#         with:
+#           distribution: 'zulu'
+#           java-version: '17'
+          
+#       - name: Setup Android SDK
+#         uses: android-actions/setup-android@v2
+        
+#       - name: Install Maestro CLI
+#         run: |
+#           brew tap mobile-dev-inc/tap
+#           brew install maestro
+          
+#       - name: Set Maestro Timeout Environment Variable
+#         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
+          
+#       - name: Download Android App
+#         run: |
+#           curl -L -o challaztopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
+          
+#       - name: Create and Launch Emulator
+#         uses: reactivecircus/android-emulator-runner@v2
+#         with:
+#           api-level: 33
+#           target: google_apis
+#           arch: x86_64
+#           profile: pixel
+#           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+#           disable-animations: true
+#           force-avd-creation: true
+#           emulator-build: 7425822  # Specify a stable emulator build
+#           script: |
+#             # Wait for emulator to be fully available
+#             adb devices
+#             sleep 10
+#             adb devices
+            
+#             # Install app and run tests
+#             adb install challaztopfade.apk
+#             maestro test android/
+
+
+name: Maestro Android Test on Ubuntu
 
 on:
-  # push:
-  #   branches:
-  #     - test
   workflow_dispatch:
 
 jobs:
   maestro-test-android:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -24,8 +79,14 @@ jobs:
         
       - name: Install Maestro CLI
         run: |
-          brew tap mobile-dev-inc/tap
-          brew install maestro
+          # Install Maestro dependencies
+          sudo apt-get update
+          sudo apt-get install -y curl unzip
+          
+          # Download and install Maestro CLI
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          export PATH="$PATH:$HOME/.maestro/bin"
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
           
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
@@ -41,16 +102,18 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel
+          cores: 2
+          ram-size: 2048M
+          disk-size: 4096M
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           force-avd-creation: true
-          emulator-build: 7425822  # Specify a stable emulator build
           script: |
-            # Wait for emulator to be fully available
-            adb devices
-            sleep 10
+            # Verify device
             adb devices
             
-            # Install app and run tests
-            adb install challaztopfade.apk
+            # Install app
+            adb install app-release.apk
+            
+            # Run Maestro tests
             maestro test android/
