@@ -1,64 +1,53 @@
-name: Android Emulator on macOS
+name: Maestro Android Test
 
 on:
+  # push:
+  #   branches:
+  #     - test
   workflow_dispatch:
 
 jobs:
-  run-emulator:
+  maestro-test-android:
     runs-on: macos-latest
-    timeout-minutes: 30
-
-    env:
-      API_LEVEL: 31
-      EMULATOR_NAME: test-emulator
-      DEVICE: "pixel"
-      APK_URL: "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        
       - name: Install Homebrew
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-      - name: Install dependencies
+          
+      - name: Install Android Command Line Tools
         run: |
-          brew install --cask android-sdk
-          brew install --cask android-platform-tools
-          echo "y" | sdkmanager "platforms;android-${API_LEVEL}" "system-images;android-${API_LEVEL};google_apis;x86_64"
-          sdkmanager --licenses || true
-          echo "ANDROID_HOME=/usr/local/share/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/platform-tools:$PATH" >> $GITHUB_ENV
-          echo "PATH=$ANDROID_HOME/emulator:$PATH" >> $GITHUB_ENV
-
-      - name: Create and start emulator
+          brew install --cask android-commandlinetools
+          
+      - name: Setup Android SDK
         run: |
-          yes "no" | avdmanager create avd -n $EMULATOR_NAME -k "system-images;android-${API_LEVEL};google_apis;x86_64" -d $DEVICE --force
-          nohup emulator -avd $EMULATOR_NAME -no-snapshot -no-window -gpu off &
-          echo "Waiting for emulator to boot..."
-          adb wait-for-device
-          boot_completed=""
-          until [[ "$boot_completed" == "1" ]]; do
-            boot_completed=$(adb shell getprop sys.boot_completed | tr -d '\r')
-            sleep 5
-          done
-          adb shell input keyevent 82
-
-      - name: Download APK
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0" "system-images;android-33;google_apis;x86_64"
+          
+      - name: Create and Start Android Emulator
         run: |
-          curl -o challaztopfade.apk "$APK_URL"
-
-      - name: Install APK on emulator
-        run: |
-          adb install challaztopfade.apk
-          adb shell pm list packages | grep expo || echo "APK may not have installed correctly"
-          - name: Install Homebrew
-          run: |
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
+          echo "no" | avdmanager create avd --name test_device --package "system-images;android-33;google_apis;x86_64"
+          $ANDROID_HOME/emulator/emulator -avd test_device -no-audio -no-window -no-boot-anim -gpu swiftshader_indirect &
+          adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+          
       - name: Install Maestro CLI
         run: |
           brew tap mobile-dev-inc/tap
           brew install maestro
-      - name: Run Maestro Flow
+          
+      - name: Set Maestro Timeout Environment Variable
+        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
+        
+      - name: Download Android App
+        run: |
+          curl -L -o app-release.apk "https://your-android-app-url.apk"
+          
+      - name: Install Android App
+        run: adb install app-release.apk
+        
+      - name: Run Maestro Tests
         run: maestro test android/
