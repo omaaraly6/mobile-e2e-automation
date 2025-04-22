@@ -27,41 +27,44 @@ jobs:
           arch: x86
           target: default
           ram-size: 2048M
+          disable-animations: true
           script: |
-            bash -c '
-              echo "Restarting ADB server just in case..."
-              adb kill-server
-              sleep 2
-              adb start-server
-
-              echo "Waiting for emulator to fully boot..."
-
-              boot_completed=""
-              device_status=""
-
-              until [[ "$device_status" == "device" ]]; do
+            #!/bin/bash
+            set -eo pipefail
+      
+            echo "Restarting ADB server just in case..."
+            adb kill-server
+            sleep 2
+            adb start-server
+      
+            echo "Waiting for emulator to fully boot..."
+      
+            boot_completed=""
+            device_status=""
+      
+            until [[ "$device_status" == "device" ]]; do
+              sleep 5
+              device_status=$(adb devices | grep emulator-5554 | awk '{print $2}')
+              echo "ADB device status: $device_status"
+            done
+      
+            until [[ "$boot_completed" == "1" ]]; do
+              sleep 5
+              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              echo "sys.boot_completed=$boot_completed"
+            done
+      
+            echo "Emulator is ready!"
+      
+            for ((i = 1; i <= 5; i++)); do
+              adb install ChallazTopfade.apk && break || {
+                echo "Install failed, retrying in 5s..."
                 sleep 5
-                device_status=$(adb devices | grep emulator-5554 | awk '\''{print $2}'\'')
-                echo "ADB device status: $device_status"
-              done
-
-              until [[ "$boot_completed" == "1" ]]; do
-                sleep 5
-                boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\''\r'\'')
-                echo "sys.boot_completed=$boot_completed"
-              done
-
-              echo "Emulator is ready!"
-
-              for ((i = 1; i <= 5; i++)); do
-                adb install ChallazTopfade.apk && break || {
-                  echo "Install failed, retrying in 5s..."
-                  sleep 5
-                }
-              done
-
-              maestro test android/
-            '
+              }
+            done
+      
+            maestro test android/
+        
 
 
 
