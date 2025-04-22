@@ -61,7 +61,7 @@ jobs:
               done
 
               maestro test android/
-              '
+            '
 
 
 
