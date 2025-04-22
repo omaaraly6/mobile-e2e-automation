@@ -28,27 +28,40 @@ jobs:
           target: default
           ram-size: 2048M
           script: |
-            echo "Waiting for emulator to fully boot..."
-            boot_completed=""
-            device_status=""
+            bash -c '
+              echo "Restarting ADB server just in case..."
+              adb kill-server
+              sleep 2
+              adb start-server
 
-            # Wait for ADB to show the emulator as "device"
-            until [[ "$device_status" == *"device" ]]; do
-              sleep 5
-              device_status=$(adb devices | grep emulator-5554 | awk '{print $2}')
-              echo "ADB device status: $device_status"
-            done
+              echo "Waiting for emulator to fully boot..."
 
-            # Wait for system boot to complete
-            until [[ "$boot_completed" == "1" ]]; do
-              sleep 5
-              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "sys.boot_completed=$boot_completed"
-            done
+              boot_completed=""
+              device_status=""
 
-            echo "Emulator is ready."
+              until [[ "$device_status" == "device" ]]; do
+                sleep 5
+                device_status=$(adb devices | grep emulator-5554 | awk '\''{print $2}'\'')
+                echo "ADB device status: $device_status"
+              done
 
-            adb install ChallazTopfade.apk
-            maestro test android/
+              until [[ "$boot_completed" == "1" ]]; do
+                sleep 5
+                boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\''\r'\'')
+                echo "sys.boot_completed=$boot_completed"
+              done
+
+              echo "Emulator is ready!"
+
+              for i in {1..5}; do
+                adb install ChallazTopfade.apk && break || {
+                  echo "Install failed, retrying in 5s..."
+                  sleep 5
+                }
+              done
+
+              maestro test android/
+              '
+
 
 
