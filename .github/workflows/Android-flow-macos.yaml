@@ -82,5 +82,13 @@ jobs:
           ram-size: 2048M
           target: default
           script: |
+            echo "Waiting for emulator to boot..."
+            boot_completed=""
+            until [[ "$boot_completed" == "1" ]]; do
+              sleep 5
+              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              echo "boot_completed=$boot_completed"
+            done
+            echo "Emulator is ready."
             adb install ChallazTopfade.apk
             maestro test android/
