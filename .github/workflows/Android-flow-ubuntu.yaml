@@ -53,7 +53,7 @@ jobs:
 
               echo "Emulator is ready!"
 
-              for i in {1..5}; do
+              for ((i = 1; i <= 5; i++)); do
                 adb install ChallazTopfade.apk && break || {
                   echo "Install failed, retrying in 5s..."
                   sleep 5
@@ -62,6 +62,7 @@ jobs:
 
               maestro test android/
             '
+
 
 
 
