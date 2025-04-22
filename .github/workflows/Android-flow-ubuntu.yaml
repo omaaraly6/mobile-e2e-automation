@@ -28,15 +28,27 @@ jobs:
           target: default
           ram-size: 2048M
           script: |
-            echo "Waiting for emulator to boot..."
+            echo "Waiting for emulator to fully boot..."
             boot_completed=""
+            device_status=""
+
+            # Wait for ADB to show the emulator as "device"
+            until [[ "$device_status" == *"device" ]]; do
+              sleep 5
+              device_status=$(adb devices | grep emulator-5554 | awk '{print $2}')
+              echo "ADB device status: $device_status"
+            done
+
+            # Wait for system boot to complete
             until [[ "$boot_completed" == "1" ]]; do
               sleep 5
               boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "boot_completed=$boot_completed"
+              echo "sys.boot_completed=$boot_completed"
             done
+
             echo "Emulator is ready."
 
             adb install ChallazTopfade.apk
             maestro test android/
+
 
