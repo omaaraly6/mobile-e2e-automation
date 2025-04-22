@@ -20,7 +20,7 @@ jobs:
         run: |
           curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
 
-      - name: Run Maestro Tests on Emulator
+      - name: Start Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
@@ -28,42 +28,74 @@ jobs:
           target: default
           ram-size: 2048M
           disable-animations: true
-          script: |
-            #!/bin/bash
-            set -eo pipefail
+          script: echo "Emulator started"
+        
+      - name: Run APK install and Maestro tests
+        shell: bash
+        run: |
+          set -eo pipefail
       
-            echo "Restarting ADB server just in case..."
-            adb kill-server
+          echo "Restarting ADB server just in case..."
+          adb kill-server || true
+          sleep 2
+          adb start-server
+      
+          echo "Waiting for emulator to be listed in adb devices..."
+          timeout=60
+          count=0
+          device_status=""
+          while [[ "$device_status" != "device" && $count -lt $timeout ]]; do
             sleep 2
-            adb start-server
+            device_status=$(adb devices | grep emulator | awk '{print $2}')
+            echo "ADB device status: $device_status"
+            count=$((count + 1))
+          done
       
-            echo "Waiting for emulator to fully boot..."
+          if [[ "$device_status" != "device" ]]; then
+            echo "❌ Emulator never showed up in adb devices. Exiting."
+            exit 1
+          fi
       
-            boot_completed=""
-            device_status=""
+          echo "Waiting for emulator to finish booting..."
+          boot_completed=""
+          count=0
+          while [[ "$boot_completed" != "1" && $count -lt $timeout ]]; do
+            sleep 2
+            boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            echo "sys.boot_completed=$boot_completed"
+            count=$((count + 1))
+          done
       
-            until [[ "$device_status" == "device" ]]; do
+          if [[ "$boot_completed" != "1" ]]; then
+            echo "❌ Emulator failed to boot in time. Exiting."
+            exit 1
+          fi
+      
+          echo "✅ Emulator is ready!"
+      
+          if [[ ! -f ChallazTopfade.apk ]]; then
+            echo "❌ APK not found: ChallazTopfade.apk"
+            exit 1
+          fi
+      
+          for i in {1..5}; do
+            echo "Attempting to install APK (try $i)..."
+            adb install -r ChallazTopfade.apk && break || {
+              echo "⚠️ Install failed, retrying in 5s..."
               sleep 5
-              device_status=$(adb devices | grep emulator-5554 | awk '{print $2}')
-              echo "ADB device status: $device_status"
-            done
+            }
+          done
       
-            until [[ "$boot_completed" == "1" ]]; do
-              sleep 5
-              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "sys.boot_completed=$boot_completed"
-            done
+          echo "✅ APK installed"
       
-            echo "Emulator is ready!"
+          if ! command -v maestro &> /dev/null; then
+            echo "❌ Maestro CLI not found in PATH"
+            exit 1
+          fi
       
-            for ((i = 1; i <= 5; i++)); do
-              adb install ChallazTopfade.apk && break || {
-                echo "Install failed, retrying in 5s..."
-                sleep 5
-              }
-            done
-      
-            maestro test android/
+          echo "🚀 Running Maestro test..."
+          maestro test android/
+        
         
 
 
