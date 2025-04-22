@@ -74,12 +74,13 @@ jobs:
       - name: Download Android App (APK)
         run: |
           curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
-      - name: Install Android App
-        run: adb install ChallazTopfade.apk
-      - uses: reactivecircus/android-emulator-runner@v2
+      - name: Run Maestro Tests on Emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
           arch: x86_64
           ram-size: 2048M
           target: default
-          script: maestro test android/
+          script: |
+            adb install ChallazTopfade.apk
+            maestro test android/
