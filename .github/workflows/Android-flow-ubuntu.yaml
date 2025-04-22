@@ -38,14 +38,14 @@ jobs:
             timeout=60
             count=0
             device_status=""
-            while [[ "$device_status" != "device" && $count -lt $timeout ]]; do
+            while [ "$device_status" != "device" ] && [ "$count" -lt "$timeout" ]; do
               sleep 2
               device_status=$(adb devices | grep emulator | awk '{print $2}')
               echo "ADB device status: $device_status"
               count=$((count + 1))
             done
       
-            if [[ "$device_status" != "device" ]]; then
+            if [ "$device_status" != "device" ]; then
               echo "❌ Emulator never showed up in adb devices. Exiting."
               exit 1
             fi
@@ -53,26 +53,26 @@ jobs:
             echo "Waiting for emulator to finish booting..."
             boot_completed=""
             count=0
-            while [[ "$boot_completed" != "1" && $count -lt $timeout ]]; do
+            while [ "$boot_completed" != "1" ] && [ "$count" -lt "$timeout" ]; do
               sleep 2
               boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               echo "sys.boot_completed=$boot_completed"
               count=$((count + 1))
             done
       
-            if [[ "$boot_completed" != "1" ]]; then
+            if [ "$boot_completed" != "1" ]; then
               echo "❌ Emulator failed to boot in time. Exiting."
               exit 1
             fi
       
             echo "✅ Emulator is ready!"
       
-            if [[ ! -f ChallazTopfade.apk ]]; then
+            if [ ! -f ChallazTopfade.apk ]; then
               echo "❌ APK not found: ChallazTopfade.apk"
               exit 1
             fi
       
-            for i in {1..5}; do
+            for i in $(seq 1 5); do
               echo "Attempting to install APK (try $i)..."
               adb install -r ChallazTopfade.apk && break || {
                 echo "⚠️ Install failed, retrying in 5s..."
@@ -82,13 +82,14 @@ jobs:
       
             echo "✅ APK installed"
       
-            if ! command -v maestro &> /dev/null; then
+            if ! command -v maestro >/dev/null 2>&1; then
               echo "❌ Maestro CLI not found in PATH"
               exit 1
             fi
       
             echo "🚀 Running Maestro test..."
             maestro test android/
+        
         
         
         
