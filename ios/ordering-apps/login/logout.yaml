@@ -1,0 +1,20 @@
+appId: com.zeal.coffeeberry
+name: Verify member can logout successfully
+tags:
+  - regression-ordering-ios
+onFlowStart:
+  - runScript: ../pages/navigation.js
+  - runScript: ../pages/profilepage.js
+  - runFlow: login.yaml
+---
+- tapOn:
+    id: ${output.navigation.profilepage}
+- scrollUntilVisible:
+    element:
+      id: ${output.profilepage.logout}
+- tapOn:
+    id: ${output.profilepage.logout}
+- tapOn:
+    id: ${output.profilepage.confirmlogout}
+- assertVisible: 'Coffee Loyalty Card'
+
