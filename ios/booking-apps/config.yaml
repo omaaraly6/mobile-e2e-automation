@@ -1,6 +1,6 @@
 flows:
-  - "ios/login/*"
-  - "ios/booking/*"
+  - "login/*"
+  - "booking/*"
 includeTags:
   - "smokeTest"
 # excludeTags:

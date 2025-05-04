@@ -34,13 +34,11 @@ jobs:
 
       - name: Download iOS App for Simulator
         run: |
-          curl -L -o ChallazTopfade.tar.gz "https://expo.dev/artifacts/eas/cGUXUDYCDkFkvc9wy4jN8P.tar.gz"
+          curl -L -o ChallazTopfade.tar.gz "https://expo.dev/artifacts/eas/4iAHbRbn6mYJtzgR8otThu.tar.gz"
           tar -xvzf ChallazTopfade.tar.gz
 
       - name: Install iOS App
         run: xcrun simctl install "iPhone 15" ChallazTopfade.app
-
-
         
       - name: Run Maestro Flow
         run: maestro test ios/

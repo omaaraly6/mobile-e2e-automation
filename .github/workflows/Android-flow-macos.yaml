@@ -73,7 +73,7 @@ jobs:
       - uses: dniHze/maestro-test-action@v1
       - name: Download Android App (APK)
         run: |
-          curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
+          curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/acfEx68NRza6QhexorkKNz.apk"
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
