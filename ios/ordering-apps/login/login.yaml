@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: Veryif member can login successfully
+name: verify member can login successfully
 tags:
   - regressiontests
 onFlowStart:

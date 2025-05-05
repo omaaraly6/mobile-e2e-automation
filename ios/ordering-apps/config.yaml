@@ -1,0 +1,20 @@
+flows:
+  - "login/*"
+  - "pickup-ordering/*"
+# includeTags:
+#   - "smokeTest"
+# excludeTags:
+#   - "smokeTest"
+executionOrder:
+    continueOnFailure: false # default is true
+    flowsOrder:
+        - verify member can login successfully
+        - verify member can create a pickup order successfully
+        - verify member can cancel a a pickup order
+        - verify member can logout successfully
+# notifications:
+#   email:
+#     enabled: true
+#     onsSuccess: true
+#     recipients:
+#       - o.aly@getzeal.io

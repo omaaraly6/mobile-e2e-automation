@@ -1,0 +1,31 @@
+appId: com.zeal.coffeeberry
+name: verify member can create a pickup order
+onFlowStart:
+  - runScript: ../pages/homepage.js
+  - runScript: ../pages/pickuppages.js
+tags:
+  - regressions-ordering-ios
+---
+- tapOn:
+    id: ${output.homepage.pickupbtn}
+- tapOn:
+    id: ${output.pickuppages.skipbtn}
+- scrollUntilVisible:
+  element:
+    id: ${output.pickuppages.branch}
+- tapOn: 
+    id: ${output.pickuppages.branch}
+- tapOn: 
+    id: ${output.pickuppages.category}
+- tapOn: 
+    id: ${output.pickuppages.item}
+- tapOn: 
+    id: ${output.pickuppages.addtobasketbtn}
+- tapOn: 
+    id: ${output.pickuppages.checkout}
+- scrollUntilVisible:
+  element:
+    id: ${output.pickuppages.placeorderbtn}
+- tapOn: 
+    id: ${output.pickuppages.placeorderbtn}
+- assertVisible: "Reviewing your order"

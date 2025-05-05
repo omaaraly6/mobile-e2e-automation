@@ -1,12 +1,20 @@
 appId: com.zeal.coffeeberry
-name: Verify member can logout successfully
+name: verify member can logout successfully
 tags:
   - regression-ordering-ios
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/profilepage.js
-  - runFlow: login.yaml
+  - runScript: ../pages/activity.js
+  # - runFlow: login.yaml
 ---
+- condition:
+    visible:
+      id: ${output.activity.back}
+  commands:
+    - tapOn:
+        id: ${output.activity.back}
+# - tapOn: ${output.activity.back}
 - tapOn:
     id: ${output.navigation.profilepage}
 - scrollUntilVisible:
