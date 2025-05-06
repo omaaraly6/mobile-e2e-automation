@@ -1,6 +1,0 @@
-name: Verify member can cancel a pickup order
----
-- tapOn: "Cancel Order"
-- tapOn:
-    id: ${output.activity.confirmcancellation}
-- assertVisible: "Order Canceled!"

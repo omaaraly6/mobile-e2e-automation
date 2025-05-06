@@ -24,6 +24,7 @@ onFlowStart:
     id:  ${output.loginpage.Egypt}
 - tapOn:
     id: ${output.loginpage.PhoneNumber}
+    repeat: 5
 - inputText: "01000000001"
 - tapOn: "Continue"
 - tapOn: "Continue"

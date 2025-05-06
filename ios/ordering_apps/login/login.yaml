@@ -1,16 +1,14 @@
-appId: com.zeal.challaztopfade
-name: Verify member can login successfully
+appId: com.zeal.coffeeberry
+name: verify member can login successfully
 tags:
-    - smokeTest
+  - regressiontests
 onFlowStart:
-    - runScript: ../pages/loginpage.js
+  - runScript: ../pages/loginpage.js
 ---
 - launchApp:
-    appId: "com.zeal.challaztopfade"
     clearState: true
-- assertVisible: "Loyalty Card"
+- assertVisible: "Coffee Loyalty Card"
 - tapOn: "Getting Started"
-- assertVisible: "Welcome to Challaz Topfade"
 - tapOn:
     id: ${output.loginpage.CountryCode}
 - waitForAnimationToEnd:
@@ -20,16 +18,16 @@ onFlowStart:
 - inputText: "Egypt"
 - tapOn:
     id:  ${output.loginpage.Egypt}
-# - tapOn:
-#     id:  ${output.loginpage.Egypt}
+    repeat: 2
 - tapOn:
     id: ${output.loginpage.PhoneNumber}
 - inputText: "01000000001"
-- tapOn: "Continue"
-# - tapOn: "Continue"
+- tapOn: 
+    text: "Continue"
+    repeat: 2
 - waitForAnimationToEnd:
     timeout: 1000
 - copyTextFrom:
     id: "otp"
-# - tapOn: "-"
 - pasteText
+- assertVisible: "Hey, testttt"

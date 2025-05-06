@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: verify member can create a pickup order
+name: verify member can create a pickup order successfully
 onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/pickuppages.js
@@ -11,8 +11,8 @@ tags:
 - tapOn:
     id: ${output.pickuppages.skipbtn}
 - scrollUntilVisible:
-  element:
-    id: ${output.pickuppages.branch}
+    element:
+      id: ${output.pickuppages.branch}
 - tapOn: 
     id: ${output.pickuppages.branch}
 - tapOn: 
@@ -24,8 +24,8 @@ tags:
 - tapOn: 
     id: ${output.pickuppages.checkout}
 - scrollUntilVisible:
-  element:
-    id: ${output.pickuppages.placeorderbtn}
+    element:
+      id: ${output.pickuppages.placeorderbtn}
 - tapOn: 
     id: ${output.pickuppages.placeorderbtn}
 - assertVisible: "Reviewing your order"

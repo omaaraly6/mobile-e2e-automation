@@ -1,0 +1,9 @@
+appId: com.zeal.coffeeberry
+name: verify member can cancel a pickup order
+onFlowStart:
+  - runScript: ../pages/activity.js
+---
+- tapOn: "Cancel Order"
+- tapOn:
+    id: ${output.activity.confirmcancellation}
+- assertVisible: "Order Canceled!"

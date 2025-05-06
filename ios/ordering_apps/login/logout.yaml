@@ -8,12 +8,9 @@ onFlowStart:
   - runScript: ../pages/activity.js
   # - runFlow: login.yaml
 ---
-- condition:
-    visible:
-      id: ${output.activity.back}
-  commands:
-    - tapOn:
+- tapOn:
         id: ${output.activity.back}
+        optional: true
 # - tapOn: ${output.activity.back}
 - tapOn:
     id: ${output.navigation.profilepage}
