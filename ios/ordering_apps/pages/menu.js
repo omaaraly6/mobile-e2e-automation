@@ -1,4 +1,6 @@
 output.menu = {
-    checkout: 'Checkout',
-    placeorderbtn: "placeOrder"
+    category: 'Test Category',
+    viewbasket: "view basket",
+    item: 'Pickup Only Item',
+    addtobasketbtn: 'addto basket'
 }

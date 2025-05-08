@@ -1,30 +1,17 @@
 appId: com.zeal.coffeeberry
-name: verify member can create a pickup order successfully
+name: verify member can create a delivery order successfully
 onFlowStart:
+  - runScript: ../pages/navigation.js
   - runScript: ../pages/homepage.js
-  - runScript: ../pages/pickuppages.js
   - runScript: ../pages/menu.js
   - runScript: ../pages/checkout.js
+  - runScript: ../pages/deliverypages.js
 #   - runFlow: ../login/login.yaml
-# tags:
-#   - regressions-ordering-ios
 ---
-- setLocation:
-    latitude: 30.049616
-    longitude: 31.469983
 - tapOn:
-    id: ${output.homepage.pickupbtn}
-    optional: false
+    id: ${output.homepage.deliverybtn}
 - tapOn:
-    id: ${output.pickuppages.skipbtn}
-    optional: true
-- scrollUntilVisible:
-    element:
-        id: ${output.pickuppages.branch}
-- tapOn: 
-    id: ${output.pickuppages.branch}
-- tapOn: 
-    id: ${output.pickuppages.confirm}   
+    id: ${output.deliverypages.confirmbtn}
 - tapOn: 
     id: ${output.menu.category}
 - tapOn: 

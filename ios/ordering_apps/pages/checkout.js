@@ -1,4 +1,4 @@
-outerHeightput.checkout = {
+output.checkout = {
     checkoutbtn: 'Checkout',
     placeorderbtn: "placeOrder"
 }

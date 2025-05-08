@@ -1,6 +1,7 @@
 flows:
   - "login/*"
   - "pickup_ordering/*"
+  - "delivery_ordering/*"
 # includeTags:
 #   - "smokeTest"
 # excludeTags:
@@ -11,6 +12,8 @@ executionOrder:
         - verify member can login successfully
         - verify member can create a pickup order successfully
         - verify member can cancel a pickup order
+        - verify member can create a delivery order successfully
+        - verify member can cancel a delivery order
         - verify member can logout successfully
 # notifications:
 #   email:
