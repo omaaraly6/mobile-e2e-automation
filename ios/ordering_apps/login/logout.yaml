@@ -8,10 +8,9 @@ onFlowStart:
   - runScript: ../pages/activity.js
   # - runFlow: login.yaml
 ---
-- tapOn:
-        id: ${output.activity.back}
-        optional: true
-# - tapOn: ${output.activity.back}
+# - tapOn:
+#         id: ${output.activity.back}
+#         optional: true
 - tapOn:
     id: ${output.navigation.profilepage}
 - scrollUntilVisible:

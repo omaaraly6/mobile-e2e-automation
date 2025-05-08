@@ -1,6 +1,6 @@
 flows:
   - "login/*"
-  - "pickup_ ordering/*"
+  - "pickup_ordering/*"
 # includeTags:
 #   - "smokeTest"
 # excludeTags:

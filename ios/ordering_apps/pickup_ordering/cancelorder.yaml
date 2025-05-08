@@ -3,7 +3,9 @@ name: verify member can cancel a pickup order
 onFlowStart:
   - runScript: ../pages/activity.js
 ---
-- tapOn: "Cancel Order"
+- tapOn: " Cancel Order"
 - tapOn:
     id: ${output.activity.confirmcancellation}
 - assertVisible: "Order Canceled!"
+- tapOn:
+    id: ${output.activity.backbtn}
