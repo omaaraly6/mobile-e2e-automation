@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: verify member can create a delivery order successfully
+name: F&B Apps - Verify member can create a delivery order successfully
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/homepage.js

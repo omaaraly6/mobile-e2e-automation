@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: verify member can login successfully
+name: F&B Apps - Verify member can login successfully
 tags:
   - regressiontests
 onFlowStart:

@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: verify member can create a pickup order successfully
+name: F&B Apps - Verify member can create a pickup order successfully
 onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/pickuppages.js

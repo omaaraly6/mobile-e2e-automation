@@ -1,17 +1,17 @@
 flows:
   - "login/*"
   - "booking/*"
-includeTags:
-  - "smokeTest"
+# includeTags:
+#   - "smokeTest"
 # excludeTags:
 #   - "smokeTest"
 executionOrder:
     continueOnFailure: false # default is true
     flowsOrder:
-        - Verify member can login successfully
-        - Verify member can create a booking successfully
-        - Verify member can cancel a booking
-        - Verify member can logout successfully
+        - Booking Apps - Verify member can login successfully
+        - Booking Apps - Verify member can create a booking successfully
+        - Booking Apps - Verify member can cancel a booking
+        - Booking Apps - Verify member can logout successfully
 notifications:
   email:
     enabled: true

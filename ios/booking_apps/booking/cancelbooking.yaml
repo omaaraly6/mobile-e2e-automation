@@ -1,5 +1,5 @@
 appId: com.zeal.challaztopfade
-name: Verify member can cancel a booking
+name: Booking Apps - Verify member can cancel a booking
 tags:
   - smokeTest
 onFlowStart:

@@ -1,5 +1,5 @@
 appId: com.zeal.challaztopfade
-name: Verify member can login successfully
+name: Booking Apps - Verify member can login successfully
 tags:
     - smokeTest
 onFlowStart:

@@ -1,5 +1,5 @@
 appId: com.zeal.coffeeberry
-name: verify member can cancel a pickup order
+name: F&B Apps - Verify member can cancel a pickup order
 onFlowStart:
   - runScript: ../pages/activity.js
 ---
