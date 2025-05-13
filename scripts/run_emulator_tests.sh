@@ -18,7 +18,7 @@ while [ "$device_status" != "device" ] && [ "$count" -lt "$timeout" ]; do
 done
 
 if [ "$device_status" != "device" ]; then
-  echo "❌ Emulator never showed up in adb devices. Exiting."
+  echo "Emulator never showed up in adb devices. Exiting."
   exit 1
 fi
 
@@ -33,11 +33,11 @@ while [ "$boot_completed" != "1" ] && [ "$count" -lt "$timeout" ]; do
 done
 
 if [ "$boot_completed" != "1" ]; then
-  echo "❌ Emulator failed to boot in time. Exiting."
+  echo "Emulator failed to boot in time. Exiting."
   exit 1
 fi
 
-echo "✅ Emulator is ready!"
+echo "Emulator is ready!"
 
 # Retry APK installation up to 5 times in case of failure
 for i in $(seq 1 5); do
@@ -48,8 +48,8 @@ for i in $(seq 1 5); do
   }
 done
 
-echo "✅ APK installed"
+echo "APK installed"
 
 # Run the Maestro tests
-echo "🚀 Running Maestro test..."
+echo "Running Maestro test..."
 maestro test android/

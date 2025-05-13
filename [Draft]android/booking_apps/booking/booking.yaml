@@ -1,11 +1,11 @@
 appId: com.zeal.challaztopfade
-name: Booking Apps - Verify member can create a booking successfully
+name: Verify member can create a booking successfully
 tags:
-  - booking_apps
+  - smokeTest
 onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/bookingpage.js
-#   - runFlow: ../login/login.yaml
+  # - runFlow: ../login/login.yaml
 ---
 - waitForAnimationToEnd:
     timeout: 2000
@@ -25,16 +25,10 @@ onFlowStart:
 # - tapOn: 'continue'
 - scrollUntilVisible:
     element:
-      text: ${output.bookingpage.slot}
-    timeout: 50000
-    optional: false
-    visibilityPercentage: 100
+      id: ${output.bookingpage.slot}
 - tapOn:
     id: ${output.bookingpage.slot}
-    optional: false
-- tapOn:
-    text: 'continue'
-    optional: false
+- tapOn: 'continue'
 - scrollUntilVisible:
     element:
       id: ${output.bookingpage.confirmbooking}

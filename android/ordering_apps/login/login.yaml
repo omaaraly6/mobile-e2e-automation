@@ -1,16 +1,14 @@
-appId: com.zeal.challaztopfade
-name: Booking Apps - Verify member can login successfully
+appId: com.zeal.coffeeberry
+name: F&B Apps - Verify member can login successfully
 tags:
-    - booking_apps
+  - ordering_apps
 onFlowStart:
-    - runScript: ../pages/loginpage.js
+  - runScript: ../pages/loginpage.js
 ---
 - launchApp:
-    appId: "com.zeal.challaztopfade"
     clearState: true
-- assertVisible: "Loyalty Card"
+- assertVisible: "Coffee Loyalty Card"
 - tapOn: "Getting Started"
-- assertVisible: "Welcome to Challaz Topfade"
 - tapOn:
     id: ${output.loginpage.CountryCode}
 - waitForAnimationToEnd:
@@ -32,3 +30,4 @@ onFlowStart:
 - copyTextFrom:
     id: "otp"
 - pasteText
+- assertVisible: "Hey, testttt"

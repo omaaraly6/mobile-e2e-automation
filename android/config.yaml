@@ -1,0 +1,29 @@
+flows:
+  - "ordering_apps/login/*"
+  - "ordering_apps/pickup_ordering/*"
+  - "ordering_apps/delivery_ordering/*"
+  - "booking_apps/login/*"
+  - "booking_apps/booking/*"
+# includeTags:
+#   - "smokeTest"
+# excludeTags:
+#   - "smokeTest"
+executionOrder:
+    continueOnFailure: false # default is true
+    flowsOrder:
+        - Booking Apps - Verify member can login successfully
+        - Booking Apps - Verify member can create a booking successfully
+        - Booking Apps - Verify member can cancel a booking
+        - Booking Apps - Verify member can logout successfully
+        - F&B Apps - Verify member can login successfully
+        - F&B Apps - Verify member can create a pickup order successfully
+        - F&B Apps - Verify member can cancel a pickup order
+        - F&B Apps - Verify member can create a delivery order successfully
+        - F&B Apps - Verify member can cancel a delivery order
+        - F&B Apps - Verify member can logout successfully
+# notifications:
+#   email:
+#     enabled: true
+#     onsSuccess: true
+#     recipients:
+#       - o.aly@getzeal.io
