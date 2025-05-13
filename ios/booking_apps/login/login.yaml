@@ -1,7 +1,7 @@
 appId: com.zeal.challaztopfade
 name: Booking Apps - Verify member can login successfully
 tags:
-    - smokeTest
+    - booking_apps
 onFlowStart:
     - runScript: ../pages/loginpage.js
 ---

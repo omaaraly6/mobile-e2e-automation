@@ -1,9 +1,11 @@
 appId: com.zeal.coffeeberry
 name: F&B Apps - Verify member can cancel a pickup order
+tags:
+  - ordering_apps
 onFlowStart:
   - runScript: ../pages/activity.js
 ---
-- tapOn: " Cancel Order"
+- tapOn: "Cancel Order"
 - tapOn:
     id: ${output.activity.confirmcancellation}
 - assertVisible: "Order Canceled!"

@@ -1,5 +1,7 @@
 appId: com.zeal.coffeeberry
 name: F&B Apps - Verify member can create a delivery order successfully
+tags:
+  - ordering_apps
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/homepage.js
@@ -10,12 +12,17 @@ onFlowStart:
 ---
 - tapOn:
     id: ${output.homepage.deliverybtn}
+- scrollUntilVisible:
+    element:
+        id: ${output.deliverypages.address}
+- tapOn:
+    id: ${output.deliverypages.address}
 - tapOn:
     id: ${output.deliverypages.confirmbtn}
 - tapOn: 
     id: ${output.menu.category}
 - tapOn: 
-    id: ${output.menu.item}
+    id: ${output.menu.deliveryitem}
 - tapOn: 
     id: ${output.menu.addtobasketbtn}
 - tapOn: 

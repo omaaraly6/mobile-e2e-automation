@@ -1,4 +1,4 @@
 output.deliverypages = {
-    address: '',
+    address: 'Test Address',
     confirmbtn: 'Confirm'
 }

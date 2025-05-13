@@ -1,6 +1,7 @@
 output.menu = {
     category: 'Test Category',
     viewbasket: "view basket",
-    item: 'Pickup Only Item',
+    pickupitem: 'Pickup Only Item',
+    deliveryitem: 'Delivery Only Item',
     addtobasketbtn: 'addto basket'
 }

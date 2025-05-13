@@ -1,5 +1,7 @@
 appId: com.zeal.coffeeberry
 name: F&B Apps - Verify member can create a pickup order successfully
+tags:
+  - ordering_apps
 onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/pickuppages.js
@@ -28,7 +30,7 @@ onFlowStart:
 - tapOn: 
     id: ${output.menu.category}
 - tapOn: 
-    id: ${output.menu.item}
+    id: ${output.menu.pickupitem}
 - tapOn: 
     id: ${output.menu.addtobasketbtn}
 - tapOn: 

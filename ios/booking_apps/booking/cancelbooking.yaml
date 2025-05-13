@@ -1,7 +1,7 @@
 appId: com.zeal.challaztopfade
 name: Booking Apps - Verify member can cancel a booking
 tags:
-  - smokeTest
+  - booking_apps
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/activity.js
@@ -9,7 +9,8 @@ onFlowStart:
 - tapOn:
     id: ${output.navigation.orderspage}
 - tapOn:
-    point: "50%,22%"
+    text: "Ordered 1 Items"
+    index: 0
 - tapOn:
     id: ${output.activity.cancelbooking}
 - tapOn:
