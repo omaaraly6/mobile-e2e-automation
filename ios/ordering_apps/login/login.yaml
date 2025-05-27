@@ -21,7 +21,7 @@ onFlowStart:
     repeat: 2
 - tapOn:
     id: ${output.loginpage.PhoneNumber}
-- inputText: "01000000001"
+- inputText: "01020000002"
 - tapOn: 
     text: "Continue"
     repeat: 2
@@ -30,4 +30,4 @@ onFlowStart:
 - copyTextFrom:
     id: "otp"
 - pasteText
-- assertVisible: "Hey, testttt"
+- assertVisible: "Hey, Test"

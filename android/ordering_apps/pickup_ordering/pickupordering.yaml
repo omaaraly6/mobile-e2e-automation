@@ -29,6 +29,7 @@ onFlowStart:
     id: ${output.pickuppages.confirm}   
 - tapOn: 
     id: ${output.menu.category}
+    retryTapIfNoChange: false
 - tapOn: 
     id: ${output.menu.pickupitem}
 - tapOn: 

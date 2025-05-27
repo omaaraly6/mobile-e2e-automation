@@ -5,6 +5,8 @@ tags:
 onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/activity.js
+#   - runFlow: ../login/login.yaml
+#   - runFlow: ../booking/booking.yaml
 ---
 - tapOn:
     id: ${output.navigation.orderspage}

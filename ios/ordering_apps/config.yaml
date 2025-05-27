@@ -1,5 +1,6 @@
 flows:
   - "login/*"
+  - "visits/*"
   - "pickup_ordering/*"
   - "delivery_ordering/*"
 # includeTags:
@@ -10,6 +11,7 @@ executionOrder:
     continueOnFailure: false # default is true
     flowsOrder:
         - F&B Apps - Verify member can login successfully
+        - F&B Apps - Verify member can access QR code successfully
         - F&B Apps - Verify member can create a pickup order successfully
         - F&B Apps - Verify member can cancel a pickup order
         - F&B Apps - Verify member can create a delivery order successfully

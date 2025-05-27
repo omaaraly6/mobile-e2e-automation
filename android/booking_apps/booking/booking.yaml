@@ -5,6 +5,7 @@ tags:
 onFlowStart:
   - runScript: ../pages/homepage.js
   - runScript: ../pages/bookingpage.js
+#   - runScript: ../pages/activity.js
 #   - runFlow: ../login/login.yaml
 ---
 - waitForAnimationToEnd:
@@ -41,5 +42,8 @@ onFlowStart:
 - tapOn:
     id: ${output.bookingpage.confirmbooking}
 - assertVisible: 'Booking confirmed successfully!'
-- tapOn: Done
+- tapOn:
+    id: ${output.bookingpage.donebtn}
+    repeat: 0
+    retryTapIfNoChange: false
 

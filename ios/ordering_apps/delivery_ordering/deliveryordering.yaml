@@ -21,6 +21,7 @@ onFlowStart:
     id: ${output.deliverypages.confirmbtn}
 - tapOn: 
     id: ${output.menu.category}
+    retryTapIfNoChange: false
 - tapOn: 
     id: ${output.menu.deliveryitem}
 - tapOn: 
