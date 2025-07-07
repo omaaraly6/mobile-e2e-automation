@@ -57,10 +57,19 @@ jobs:
       - name: Download APK from source repository
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.CROSS_REPO_TOKEN || secrets.GITHUB_TOKEN }}
           script: |
             try {
               console.log('📥 Downloading APK artifact from source repository...');
+              
+              // Check which token we're using
+              const hasCrossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}' !== '';
+              console.log('🔍 Token check - CROSS_REPO_TOKEN exists:', hasCrossRepoToken);
+              if (!hasCrossRepoToken) {
+                console.log('⚠️  No CROSS_REPO_TOKEN found - using GITHUB_TOKEN (may not work for cross-repo access)');
+              } else {
+                console.log('✅ Using CROSS_REPO_TOKEN for cross-repository access');
+              }
               
               // Get the artifact details from the source repository
               const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
