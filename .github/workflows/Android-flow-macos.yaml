@@ -260,6 +260,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
           script: |
+            set -e
             echo "Looking for APK file..."
             APK_FILE=$(find . -name "*.apk" | head -1)
             if [ -n "$APK_FILE" ]; then
@@ -270,6 +271,5 @@ jobs:
               echo "No APK file found!"
               exit 1
             fi
-            
             echo "Running Maestro tests..."
             maestro test android/ 
