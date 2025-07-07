@@ -267,7 +267,7 @@ jobs:
           
       - name: Start Emulator and Run Tests
         run: |
-          # Start emulator
+          # Start emulator with software acceleration
           $ANDROID_HOME/emulator/emulator \
             -avd test \
             -port 5554 \
@@ -275,7 +275,9 @@ jobs:
             -no-snapshot \
             -noaudio \
             -no-boot-anim \
-            -gpu swiftshader_indirect &
+            -gpu swiftshader_indirect \
+            -accel off \
+            -no-kvm &
           
           # Wait for emulator to start
           echo "Waiting for emulator to start..."
