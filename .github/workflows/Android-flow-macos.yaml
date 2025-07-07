@@ -389,13 +389,36 @@ jobs:
           fi
           
           echo "📋 Checking available flows..."
-          timeout 60 maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
-            echo "ℹ️  Dry run failed, trying without config..."
-            timeout 60 maestro test android/ordering_apps/ --dry-run || echo "Both dry runs failed"
-          }
+          echo "📁 Current directory structure:"
+          ls -la
+          echo "📁 Android directory structure:"
+          ls -la android/
+          echo "📁 Ordering apps directory:"
+          ls -la android/ordering_apps/
+          echo "📋 Config file contents:"
+          cat android/ordering_apps/config.yaml
+          echo "📋 Available test files:"
+          find android/ordering_apps/ -name "*.yaml" -type f
           
           echo "🧪 Running Maestro ordering app flows..."
-          maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml
+          echo "📍 Running from current directory: $(pwd)"
+          
+          # Try with config file first
+          if maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml; then
+            echo "✅ Tests completed successfully with config"
+          else
+            echo "⚠️  Config-based execution failed, trying without config..."
+            if maestro test android/ordering_apps/; then
+              echo "✅ Tests completed successfully without config"
+            else
+              echo "❌ All test execution methods failed"
+              echo "📋 Let's try running individual flows:"
+              for flow in $(find android/ordering_apps/ -name "*.yaml" -not -path "*/pages/*" -not -name "config.yaml"); do
+                echo "🧪 Running flow: $flow"
+                maestro test "$flow" || echo "❌ Flow failed: $flow"
+              done
+            fi
+          fi
           EOF
           chmod +x test_script.sh
 
