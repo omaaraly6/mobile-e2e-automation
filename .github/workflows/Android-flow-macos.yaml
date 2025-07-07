@@ -26,7 +26,7 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -249,41 +249,24 @@ jobs:
               throw error;
             }
       
-      - name: Setup Android Emulator Manually
+      - name: Setup Android Emulator
         run: |
           # Install Android SDK components
           yes | sdkmanager --licenses > /dev/null
-          sdkmanager --install 'build-tools;33.0.0' platform-tools 'platforms;android-29' emulator 'system-images;android-29;default;arm64-v8a'
+          sdkmanager --install 'build-tools;33.0.0' platform-tools 'platforms;android-29' emulator 'system-images;android-29;default;x86_64'
           
-          # Create AVD with specific configuration
-          echo no | avdmanager create avd --force -n test --abi 'default/arm64-v8a' --package 'system-images;android-29;default;arm64-v8a'
+          # Create AVD
+          echo no | avdmanager create avd --force -n test --abi 'default/x86_64' --package 'system-images;android-29;default;x86_64'
           
-          # Configure AVD for Apple Silicon compatibility
+          # Configure AVD for CI/CD
           echo "hw.cpu.ncore=2" >> ~/.android/avd/test.avd/config.ini
           echo "hw.ramSize=2048M" >> ~/.android/avd/test.avd/config.ini
           echo "hw.gpu.enabled=yes" >> ~/.android/avd/test.avd/config.ini
           echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.accelerometer=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.camera=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.camera.back=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.camera.front=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.battery=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.audioInput=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.audioOutput=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sdCard=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.mainKeys=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.keyboard=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.gps=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors.proximity=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors.magnetic_field=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors.orientation=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors.temperature=no" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.sensors.relative_humidity=no" >> ~/.android/avd/test.avd/config.ini
           
       - name: Start Emulator and Run Tests
         run: |
-          # Start emulator with minimal options to avoid HVF
+          # Start emulator
           $ANDROID_HOME/emulator/emulator \
             -avd test \
             -port 5554 \
@@ -291,10 +274,7 @@ jobs:
             -no-snapshot \
             -noaudio \
             -no-boot-anim \
-            -gpu swiftshader_indirect \
-            -accel off \
-            -cores 2 \
-            -memory 2048 &
+            -gpu swiftshader_indirect &
           
           # Wait for emulator to start
           echo "Waiting for emulator to start..."
