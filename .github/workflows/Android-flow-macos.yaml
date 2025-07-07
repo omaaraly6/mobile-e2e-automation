@@ -296,7 +296,7 @@ jobs:
             timeout 30 adb uninstall com.zeal.takosan || echo "No previous installation found"
             
             # Install APK with timeout and verbose output
-            echo "📦 Installing APK (this may take 1-2 minutes)..."
+            echo "📦 Installing APK (this may take 5-6 minutes)..."
             echo "🔍 APK file info:"
             file "$APK_FILE"
             echo "📋 APK package info:"
@@ -304,12 +304,12 @@ jobs:
             
             echo "⚡ Starting installation..."
             INSTALL_START=$(date +%s)
-            if run_with_timeout 180 adb install -r "$APK_FILE"; then
+            if run_with_timeout 360 adb install -r "$APK_FILE"; then
               INSTALL_END=$(date +%s)
               INSTALL_TIME=$((INSTALL_END - INSTALL_START))
               echo "✅ APK installed successfully in ${INSTALL_TIME} seconds"
               
-              if [ "$INSTALL_TIME" -lt 5 ]; then
+              if [ "$INSTALL_TIME" -lt 30 ]; then
                 echo "⚠️  WARNING: Installation completed very quickly (${INSTALL_TIME}s) - this may indicate a problem"
               fi
             else
