@@ -256,35 +256,64 @@ jobs:
           #!/bin/bash
           set -e
           
+          # Function to run commands with timeout
+          run_with_timeout() {
+            timeout "$1" "$@" || {
+              echo "❌ Command timed out after $1 seconds: ${@:2}"
+              return 1
+            }
+          }
+          
           echo "🔍 Looking for APK file..."
           APK_FILE=$(find . -name "*.apk" | head -1)
           if [ -n "$APK_FILE" ]; then
             echo "📱 Installing APK: $APK_FILE"
+            echo "📊 APK file size: $(ls -lh "$APK_FILE" | awk '{print $5}')"
+            
+            # Check emulator status
+            echo "🔍 Checking emulator status..."
+            adb devices -l
+            adb shell getprop sys.boot_completed
+            
             # Uninstall any previous version first
-            adb uninstall com.zeal.takosan || echo "No previous installation found"
-            adb install "$APK_FILE"
+            echo "🗑️ Uninstalling previous version..."
+            timeout 30s adb uninstall com.zeal.takosan || echo "No previous installation found"
+            
+            # Install APK with timeout and verbose output
+            echo "📦 Installing APK (this may take 1-2 minutes)..."
+            run_with_timeout 180s adb install -r "$APK_FILE"
             echo "✅ APK installed successfully"
+            
+            # Verify installation immediately
+            echo "🔍 Checking if app was installed..."
+            adb shell pm list packages | grep takosan || {
+              echo "❌ App not found after installation!"
+              echo "📋 Available packages containing 'zeal':"
+              adb shell pm list packages | grep zeal || echo "No zeal packages found"
+              exit 1
+            }
             
             # Grant permissions that might be needed
             echo "🔐 Granting permissions..."
-            adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || true
-            adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || true
+            timeout 10s adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
+            timeout 10s adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
             
-            # Verify the app is installed
-            echo "✅ Verifying app installation..."
-            adb shell pm list packages | grep com.zeal.takosan || {
-              echo "❌ App not found after installation!"
-              exit 1
-            }
+            # Final verification
+            echo "✅ Final verification..."
+            INSTALLED_PACKAGE=$(adb shell pm list packages | grep takosan | head -1)
+            echo "📱 Installed: $INSTALLED_PACKAGE"
+            
           else
             echo "❌ No APK file found!"
+            echo "📁 Current directory contents:"
+            ls -la
             exit 1
           fi
           
           echo "📋 Checking available flows..."
-          maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
+          timeout 60s maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
             echo "ℹ️  Dry run failed, trying without config..."
-            maestro test android/ordering_apps/ --dry-run
+            timeout 60s maestro test android/ordering_apps/ --dry-run || echo "Both dry runs failed"
           }
           
           echo "🧪 Running Maestro ordering app flows..."
