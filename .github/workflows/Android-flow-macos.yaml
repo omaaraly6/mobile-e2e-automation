@@ -255,28 +255,52 @@ jobs:
           cat > test_script.sh << 'EOF'
           #!/bin/bash
           set -e
-          echo "Looking for APK file..."
+          
+          echo "🔍 Looking for APK file..."
           APK_FILE=$(find . -name "*.apk" | head -1)
           if [ -n "$APK_FILE" ]; then
-            echo "Installing APK: $APK_FILE"
+            echo "📱 Installing APK: $APK_FILE"
+            # Uninstall any previous version first
+            adb uninstall com.zeal.takosan || echo "No previous installation found"
             adb install "$APK_FILE"
-            echo "APK installed successfully"
+            echo "✅ APK installed successfully"
+            
+            # Grant permissions that might be needed
+            echo "🔐 Granting permissions..."
+            adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || true
+            adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || true
+            
+            # Verify the app is installed
+            echo "✅ Verifying app installation..."
+            adb shell pm list packages | grep com.zeal.takosan || {
+              echo "❌ App not found after installation!"
+              exit 1
+            }
           else
-            echo "No APK file found!"
+            echo "❌ No APK file found!"
             exit 1
           fi
-          echo "Running Maestro ordering app flows..."
-          maestro test android/ordering_apps/
+          
+          echo "📋 Checking available flows..."
+          maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
+            echo "ℹ️  Dry run failed, trying without config..."
+            maestro test android/ordering_apps/ --dry-run
+          }
+          
+          echo "🧪 Running Maestro ordering app flows..."
+          maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml
           EOF
           chmod +x test_script.sh
 
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 28
           arch: x86_64
-          ram-size: 2048M
+          ram-size: 1024M
+          disk-size: 2048M
           target: default
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
-          script: ./test_script.sh 
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 1024 -cores 2 -skin 1080x1920 -netdelay none -netspeed full
+          script: ./test_script.sh
+        timeout-minutes: 30
