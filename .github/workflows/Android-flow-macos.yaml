@@ -26,7 +26,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, macOS]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -39,8 +39,9 @@ jobs:
         
       - name: Install Maestro CLI
         run: |
-          brew tap mobile-dev-inc/tap
-          brew install maestro
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          export PATH="$PATH":"$HOME/.maestro/bin"
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
           
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
@@ -259,15 +260,16 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
           script: |
-            # Install the downloaded APK
+            echo "Looking for APK file..."
             APK_FILE=$(find . -name "*.apk" | head -1)
             if [ -n "$APK_FILE" ]; then
               echo "Installing APK: $APK_FILE"
               adb install "$APK_FILE"
+              echo "APK installed successfully"
             else
               echo "No APK file found!"
               exit 1
             fi
             
-            # Run Maestro tests
+            echo "Running Maestro tests..."
             maestro test android/ 
