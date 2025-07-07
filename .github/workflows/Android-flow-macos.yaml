@@ -250,58 +250,34 @@ jobs:
               throw error;
             }
       
-      - name: Setup Android Emulator
-        run: |
-          # Install Android SDK components
-          yes | sdkmanager --licenses > /dev/null
-          sdkmanager --install 'build-tools;33.0.0' platform-tools 'platforms;android-29' emulator 'system-images;android-29;default;x86_64'
-          
-          # Create AVD
-          echo no | avdmanager create avd --force -n test --abi 'default/x86_64' --package 'system-images;android-29;default;x86_64'
-          
-          # Configure AVD for CI/CD
-          echo "hw.cpu.ncore=2" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.ramSize=2048M" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.gpu.enabled=yes" >> ~/.android/avd/test.avd/config.ini
-          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/test.avd/config.ini
-          
-      - name: Start Emulator and Run Tests
-        run: |
-          # Start emulator with software acceleration
-          $ANDROID_HOME/emulator/emulator \
-            -avd test \
-            -port 5554 \
-            -no-window \
-            -no-snapshot \
-            -noaudio \
-            -no-boot-anim \
-            -gpu swiftshader_indirect \
-            -accel off \
-            -no-kvm &
-          
-          # Wait for emulator to start
-          echo "Waiting for emulator to start..."
-          sleep 30
-          
-          # Wait for boot completion
-          echo "Waiting for emulator to boot..."
-          boot_completed=""
-          until [[ "$boot_completed" == "1" ]]; do
-            sleep 10
-            boot_completed=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-            echo "boot_completed=$boot_completed"
-          done
-          echo "Emulator is ready."
-          
-          # Install the downloaded APK
-          APK_FILE=$(find . -name "*.apk" | head -1)
-          if [ -n "$APK_FILE" ]; then
-            echo "Installing APK: $APK_FILE"
-            adb -s emulator-5554 install "$APK_FILE"
-          else
-            echo "No APK file found!"
-            exit 1
-          fi
-          
-          # Run Maestro tests
-          maestro test android/ 
+      - name: Run Maestro Tests on Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          ram-size: 2048M
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
+          script: |
+            echo "Waiting for emulator to boot..."
+            boot_completed=""
+            until [[ "$boot_completed" == "1" ]]; do
+              sleep 10
+              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+              echo "boot_completed=$boot_completed"
+            done
+            echo "Emulator is ready."
+            
+            # Install the downloaded APK
+            APK_FILE=$(find . -name "*.apk" | head -1)
+            if [ -n "$APK_FILE" ]; then
+              echo "Installing APK: $APK_FILE"
+              adb install "$APK_FILE"
+            else
+              echo "No APK file found!"
+              exit 1
+            fi
+            
+            # Run Maestro tests
+            maestro test android/ 
