@@ -43,18 +43,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm || true
           
-      - name: Optimize Android SDK
-        run: |
-          # Find and use the correct sdkmanager path
-          if [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
-            echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.0" "platform-tools" "platforms;android-30"
-          elif [ -f "$ANDROID_HOME/tools/bin/sdkmanager" ]; then
-            echo "y" | $ANDROID_HOME/tools/bin/sdkmanager "build-tools;33.0.0" "platform-tools" "platforms;android-30"
-          else
-            echo "📋 Available SDK tools:"
-            find $ANDROID_HOME -name "sdkmanager" 2>/dev/null || echo "No sdkmanager found"
-            echo "⚠️  Skipping SDK optimization - sdkmanager not found in expected location"
-          fi
+
         
       - name: Install Maestro CLI
         run: |
