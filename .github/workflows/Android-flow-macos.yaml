@@ -258,7 +258,7 @@ jobs:
           
           # Function to run commands with timeout
           run_with_timeout() {
-            timeout "$1" "$@" || {
+            timeout "$1" "${@:2}" || {
               echo "❌ Command timed out after $1 seconds: ${@:2}"
               return 1
             }
@@ -268,7 +268,23 @@ jobs:
           APK_FILE=$(find . -name "*.apk" | head -1)
           if [ -n "$APK_FILE" ]; then
             echo "📱 Installing APK: $APK_FILE"
-            echo "📊 APK file size: $(ls -lh "$APK_FILE" | awk '{print $5}')"
+            
+            # Validate APK file
+            APK_SIZE=$(ls -lh "$APK_FILE" | awk '{print $5}')
+            echo "📊 APK file size: $APK_SIZE"
+            
+            # Check if file is too small (likely corrupted)
+            APK_BYTES=$(stat -c%s "$APK_FILE")
+            if [ "$APK_BYTES" -lt 1000000 ]; then
+              echo "⚠️  WARNING: APK file is very small (${APK_SIZE}) - may be corrupted"
+              echo "🔍 File content preview:"
+              head -c 100 "$APK_FILE" | xxd || echo "Could not read file"
+            fi
+            
+            # Check file type
+            if ! file "$APK_FILE" | grep -q "Android"; then
+              echo "⚠️  WARNING: File may not be a valid Android APK"
+            fi
             
             # Check emulator status
             echo "🔍 Checking emulator status..."
@@ -277,26 +293,67 @@ jobs:
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
-            timeout 30s adb uninstall com.zeal.takosan || echo "No previous installation found"
+            timeout 30 adb uninstall com.zeal.takosan || echo "No previous installation found"
             
             # Install APK with timeout and verbose output
             echo "📦 Installing APK (this may take 1-2 minutes)..."
-            run_with_timeout 180s adb install -r "$APK_FILE"
-            echo "✅ APK installed successfully"
+            echo "🔍 APK file info:"
+            file "$APK_FILE"
+            echo "📋 APK package info:"
+            aapt dump badging "$APK_FILE" 2>/dev/null | head -5 || echo "Could not read APK badging"
+            
+            echo "⚡ Starting installation..."
+            INSTALL_START=$(date +%s)
+            if run_with_timeout 180 adb install -r "$APK_FILE"; then
+              INSTALL_END=$(date +%s)
+              INSTALL_TIME=$((INSTALL_END - INSTALL_START))
+              echo "✅ APK installed successfully in ${INSTALL_TIME} seconds"
+              
+              if [ "$INSTALL_TIME" -lt 5 ]; then
+                echo "⚠️  WARNING: Installation completed very quickly (${INSTALL_TIME}s) - this may indicate a problem"
+              fi
+            else
+              echo "❌ APK installation failed!"
+              echo "📋 Checking adb connection..."
+              adb devices -l
+              echo "📋 Checking emulator storage:"
+              adb shell df /data
+              exit 1
+            fi
             
             # Verify installation immediately
             echo "🔍 Checking if app was installed..."
-            adb shell pm list packages | grep takosan || {
+            
+            # Wait a moment for package manager to update
+            sleep 2
+            
+            FOUND_PACKAGE=$(adb shell pm list packages | grep takosan || echo "")
+            if [ -n "$FOUND_PACKAGE" ]; then
+              echo "✅ App found: $FOUND_PACKAGE"
+              
+              # Get detailed package info
+              echo "📋 Package details:"
+              adb shell dumpsys package com.zeal.takosan | grep -E "(versionName|versionCode|targetSdk)" || echo "Could not get package details"
+              
+              # Check if app can be launched
+              echo "🚀 Testing app launch capability..."
+              adb shell am start -n com.zeal.takosan/.MainActivity >/dev/null 2>&1 && echo "✅ App can be launched" || echo "⚠️  App launch test failed (this might be normal)"
+              
+            else
               echo "❌ App not found after installation!"
-              echo "📋 Available packages containing 'zeal':"
+              echo "📋 All installed packages:"
+              adb shell pm list packages | head -20
+              echo "📋 Checking for any zeal packages:"
               adb shell pm list packages | grep zeal || echo "No zeal packages found"
+              echo "📋 Checking installation errors:"
+              adb logcat -d | tail -20 | grep -i "install\|package" || echo "No relevant logs found"
               exit 1
-            }
+            fi
             
             # Grant permissions that might be needed
             echo "🔐 Granting permissions..."
-            timeout 10s adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
-            timeout 10s adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
+            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
+            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
             
             # Final verification
             echo "✅ Final verification..."
@@ -311,9 +368,9 @@ jobs:
           fi
           
           echo "📋 Checking available flows..."
-          timeout 60s maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
+          timeout 60 maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml --dry-run || {
             echo "ℹ️  Dry run failed, trying without config..."
-            timeout 60s maestro test android/ordering_apps/ --dry-run || echo "Both dry runs failed"
+            timeout 60 maestro test android/ordering_apps/ --dry-run || echo "Both dry runs failed"
           }
           
           echo "🧪 Running Maestro ordering app flows..."
