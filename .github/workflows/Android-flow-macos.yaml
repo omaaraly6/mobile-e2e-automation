@@ -249,33 +249,95 @@ jobs:
               throw error;
             }
       
-      - name: Run Maestro Tests on Emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          arch: arm64-v8a
-          ram-size: 2048M
-          target: default
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
-          script: |
-            echo "Waiting for emulator to boot..."
-            boot_completed=""
-            until [[ "$boot_completed" == "1" ]]; do
-              sleep 10
-              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "boot_completed=$boot_completed"
-            done
-            echo "Emulator is ready."
-            
-            # Install the downloaded APK
-            APK_FILE=$(find . -name "*.apk" | head -1)
-            if [ -n "$APK_FILE" ]; then
-              echo "Installing APK: $APK_FILE"
-              adb install "$APK_FILE"
-            else
-              echo "No APK file found!"
-              exit 1
-            fi
-            
-            # Run Maestro tests
-            maestro test android/ 
+      - name: Setup Android Emulator Manually
+        run: |
+          # Install Android SDK components
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install 'build-tools;33.0.0' platform-tools 'platforms;android-29' emulator 'system-images;android-29;default;arm64-v8a'
+          
+          # Create AVD with specific configuration
+          echo no | avdmanager create avd --force -n test --abi 'default/arm64-v8a' --package 'system-images;android-29;default;arm64-v8a'
+          
+          # Configure AVD for Apple Silicon compatibility
+          echo "hw.cpu.ncore=2" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.ramSize=2048M" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.gpu.enabled=yes" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.gpu.mode=swiftshader_indirect" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.accelerometer=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.camera=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.camera.back=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.camera.front=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.battery=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.audioInput=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.audioOutput=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sdCard=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.mainKeys=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.keyboard=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.gps=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors.proximity=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors.magnetic_field=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors.orientation=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors.temperature=no" >> ~/.android/avd/test.avd/config.ini
+          echo "hw.sensors.relative_humidity=no" >> ~/.android/avd/test.avd/config.ini
+          
+      - name: Start Emulator and Run Tests
+        run: |
+          # Start emulator with explicit QEMU options to disable HVF
+          $ANDROID_HOME/emulator/emulator \
+            -avd test \
+            -port 5554 \
+            -no-window \
+            -no-snapshot \
+            -noaudio \
+            -no-boot-anim \
+            -gpu swiftshader_indirect \
+            -accel off \
+            -machine virt,gic-version=2 \
+            -cpu cortex-a57 \
+            -smp 2 \
+            -m 2048M \
+            -kernel $ANDROID_HOME/system-images/android-29/default/arm64-v8a/kernel-ranchu \
+            -data $ANDROID_HOME/system-images/android-29/default/arm64-v8a/userdata.img \
+            -ramdisk $ANDROID_HOME/system-images/android-29/default/arm64-v8a/ramdisk.img \
+            -system $ANDROID_HOME/system-images/android-29/default/arm64-v8a/system.img \
+            -vendor $ANDROID_HOME/system-images/android-29/default/arm64-v8a/vendor.img \
+            -netdev user,id=net0 \
+            -device virtio-net-device,netdev=net0 \
+            -device virtio-gpu-pci \
+            -device virtio-keyboard-pci \
+            -device virtio-mouse-pci \
+            -device virtio-tablet-pci \
+            -device virtio-rng-pci \
+            -device virtio-balloon-pci \
+            -device virtio-9p-pci,fsdev=fsdev0,mount_tag=shared \
+            -fsdev local,security_model=passthrough,id=fsdev0,path=/tmp \
+            -serial stdio \
+            -append "console=ttyAMA0,38400 keep_bootcon root=/dev/ram0 androidboot.hardware=ranchu androidboot.serialno=EMULATOR29X0X0X0 qemu=1" &
+          
+          # Wait for emulator to start
+          echo "Waiting for emulator to start..."
+          sleep 30
+          
+          # Wait for boot completion
+          echo "Waiting for emulator to boot..."
+          boot_completed=""
+          until [[ "$boot_completed" == "1" ]]; do
+            sleep 10
+            boot_completed=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            echo "boot_completed=$boot_completed"
+          done
+          echo "Emulator is ready."
+          
+          # Install the downloaded APK
+          APK_FILE=$(find . -name "*.apk" | head -1)
+          if [ -n "$APK_FILE" ]; then
+            echo "Installing APK: $APK_FILE"
+            adb -s emulator-5554 install "$APK_FILE"
+          else
+            echo "No APK file found!"
+            exit 1
+          fi
+          
+          # Run Maestro tests
+          maestro test android/ 
