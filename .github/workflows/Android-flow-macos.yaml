@@ -141,25 +141,26 @@ jobs:
               
               console.log(`✅ Found artifact: ${targetArtifact.name} (ID: ${targetArtifact.id})`);
               
-              // Download the artifact using GitHub API
+              // Download the artifact using GitHub API directly
               console.log('📥 Downloading artifact using GitHub API...');
               
-              const { execSync } = require('child_process');
               const fs = require('fs');
-              
-              // Use curl with proper authentication
-              const downloadUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${targetArtifact.id}/zip`;
-              console.log('Download URL:', downloadUrl);
-              
-              // Use the token directly in the Authorization header
-              const token = process.env.GITHUB_TOKEN;
-              console.log(`Using token: ${token ? token.substring(0, 8) + '...' : 'undefined'}`);
-              
-              const curlCommand = `curl -L -H "Authorization: Bearer ${token}" -H "Accept: application/vnd.github.v3+json" -H "User-Agent: GitHub-Actions" "${downloadUrl}" -o artifact.zip`;
-              console.log('Executing curl command...');
+              const https = require('https');
               
               try {
-                execSync(curlCommand, { stdio: 'inherit' });
+                // Use the GitHub API to get the download URL
+                const { data: artifactData } = await github.rest.actions.downloadArtifact({
+                  owner: owner,
+                  repo: repo,
+                  artifact_id: targetArtifact.id,
+                  archive_format: 'zip'
+                });
+                
+                console.log('✅ GitHub API download successful!');
+                console.log(`Downloaded ${artifactData.byteLength} bytes`);
+                
+                // Write the binary data to a file
+                fs.writeFileSync('artifact.zip', Buffer.from(artifactData));
                 
                 // Check what we downloaded
                 const stats = fs.statSync('artifact.zip');
@@ -174,30 +175,28 @@ jobs:
                 
                 // Extract the zip file
                 console.log('Extracting artifact...');
+                const { execSync } = require('child_process');
                 execSync('unzip -o artifact.zip', { stdio: 'inherit' });
                 execSync('rm artifact.zip', { stdio: 'inherit' });
                 
-              } catch (curlError) {
-                console.error('❌ Curl download failed:', curlError.message);
+              } catch (apiError) {
+                console.error('❌ GitHub API download failed:', apiError.message);
                 
-                // Try alternative approach using GitHub API
-                console.log('🔄 Trying alternative download method...');
+                // Fallback: try with curl using the CROSS_REPO_TOKEN directly
+                console.log('🔄 Trying curl fallback with direct token...');
                 
                 try {
-                  const { data: artifactData } = await github.rest.actions.downloadArtifact({
-                    owner: owner,
-                    repo: repo,
-                    artifact_id: targetArtifact.id,
-                    archive_format: 'zip'
-                  });
+                  const { execSync } = require('child_process');
                   
-                  // This should return a redirect URL, but let's try a different approach
-                  console.log('GitHub API response:', artifactData);
+                  // Get the token from the secret directly
+                  const crossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}';
+                  console.log(`Using CROSS_REPO_TOKEN: ${crossRepoToken ? crossRepoToken.substring(0, 8) + '...' : 'undefined'}`);
                   
-                  // Fallback: try with different headers
-                  const fallbackCommand = `curl -L -H "Authorization: token ${token}" -H "Accept: application/vnd.github.v3+json" -H "X-GitHub-Api-Version: 2022-11-28" "${downloadUrl}" -o artifact.zip`;
-                  console.log('Trying fallback command...');
-                  execSync(fallbackCommand, { stdio: 'inherit' });
+                  const downloadUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${targetArtifact.id}/zip`;
+                  const curlCommand = `curl -L -H "Authorization: Bearer ${crossRepoToken}" -H "Accept: application/vnd.github.v3+json" -H "User-Agent: GitHub-Actions" "${downloadUrl}" -o artifact.zip`;
+                  
+                  console.log('Executing curl command with direct token...');
+                  execSync(curlCommand, { stdio: 'inherit' });
                   
                   const stats = fs.statSync('artifact.zip');
                   console.log(`Fallback download size: ${stats.size} bytes`);
