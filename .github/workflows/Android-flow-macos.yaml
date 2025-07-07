@@ -250,6 +250,26 @@ jobs:
               throw error;
             }
       
+      - name: Create test script
+        run: |
+          cat > test_script.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          echo "Looking for APK file..."
+          APK_FILE=$(find . -name "*.apk" | head -1)
+          if [ -n "$APK_FILE" ]; then
+            echo "Installing APK: $APK_FILE"
+            adb install "$APK_FILE"
+            echo "APK installed successfully"
+          else
+            echo "No APK file found!"
+            exit 1
+          fi
+          echo "Running Maestro tests..."
+          maestro test android/
+          EOF
+          chmod +x test_script.sh
+
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -259,17 +279,4 @@ jobs:
           target: default
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
-          script: |
-            set -e
-            echo "Looking for APK file..."
-            APK_FILE=$(find . -name "*.apk" | head -1)
-            if [ -n "$APK_FILE" ]; then
-              echo "Installing APK: $APK_FILE"
-              adb install "$APK_FILE"
-              echo "APK installed successfully"
-            else
-              echo "No APK file found!"
-              exit 1
-            fi
-            echo "Running Maestro tests..."
-            maestro test android/ 
+          script: ./test_script.sh 
