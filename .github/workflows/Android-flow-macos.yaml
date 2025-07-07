@@ -252,11 +252,11 @@ jobs:
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 29
           arch: arm64-v8a
           ram-size: 2048M
-          target: google_apis
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off -machine virt,gic-version=2
+          target: default
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
           script: |
             echo "Waiting for emulator to boot..."
             boot_completed=""
