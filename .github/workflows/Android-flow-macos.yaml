@@ -255,13 +255,13 @@ jobs:
           api-level: 30
           arch: arm64-v8a
           ram-size: 2048M
-          target: default
+          target: google_apis
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off -no-hvf
           script: |
             echo "Waiting for emulator to boot..."
             boot_completed=""
             until [[ "$boot_completed" == "1" ]]; do
-              sleep 5
+              sleep 10
               boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               echo "boot_completed=$boot_completed"
             done
