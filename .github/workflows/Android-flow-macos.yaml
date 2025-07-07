@@ -292,8 +292,14 @@ jobs:
             fi
             
             # Check file type
-            if ! file "$APK_FILE" | grep -q "Android"; then
-              echo "⚠️  WARNING: File may not be a valid Android APK"
+            FILE_TYPE=$(file "$APK_FILE")
+            echo "📋 File type: $FILE_TYPE"
+            if echo "$FILE_TYPE" | grep -q "Android"; then
+              echo "✅ File appears to be a valid Android APK"
+            elif echo "$FILE_TYPE" | grep -q -i "zip"; then
+              echo "ℹ️  File is a ZIP archive (APKs are ZIP-based, this is normal)"
+            else
+              echo "⚠️  WARNING: File type unclear - proceeding anyway"
             fi
             
             # Check emulator status and optimize for installation
@@ -303,9 +309,9 @@ jobs:
             
             # Optimize emulator for faster installation
             echo "🚀 Optimizing emulator for faster installation..."
-            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed
-            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed
-            adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || true
+            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags"
+            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags"
+            adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || echo "Could not set CPU governor"
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
