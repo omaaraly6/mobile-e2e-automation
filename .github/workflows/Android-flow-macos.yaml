@@ -46,9 +46,10 @@ jobs:
           
       - name: Check System Capabilities
         run: |
-          echo "🔍 Checking GitHub-hosted runner capabilities..."
+          echo "🔍 Checking fastest GitHub runner (16-core) capabilities..."
           echo "CPU info:"
           lscpu | head -20
+          echo "CPU core count: $(nproc)"
           grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support"
           echo "Available space:"
           df -h
@@ -329,7 +330,7 @@ jobs:
             timeout 20 adb uninstall com.zeal.takosan || echo "No previous installation found"
             
             # Install APK with optimized settings
-            echo "📦 Installing APK (up to 5 minutes timeout on GitHub-hosted runner)..."
+            echo "📦 Installing APK (up to 12 minutes timeout on fastest GitHub runner)..."
             echo "🔍 APK file info:"
             file "$APK_FILE"
             
@@ -450,10 +451,10 @@ jobs:
         with:
           api-level: 30
           arch: x86_64
-          ram-size: 2048M
-          disk-size: 6144M
+          ram-size: 4096M
+          disk-size: 8192M
           target: google_apis
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048 -cores 2 -skin 1080x1920 -netdelay none -netspeed full
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096 -cores 4 -skin 1080x1920 -netdelay none -netspeed full -qemu -smp 4 -m 4096
           script: ./test_script.sh
-        timeout-minutes: 30
+        timeout-minutes: 35
