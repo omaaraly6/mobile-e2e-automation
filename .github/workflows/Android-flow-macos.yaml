@@ -71,6 +71,25 @@ jobs:
                 console.log('✅ Using CROSS_REPO_TOKEN for cross-repository access');
               }
               
+              // Test token permissions
+              console.log('🔍 Testing token permissions...');
+              try {
+                const { data: user } = await github.rest.users.getAuthenticated();
+                console.log(`✅ Token authenticated as: ${user.login}`);
+                
+                // Test access to source repository
+                const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
+                const { data: sourceRepo } = await github.rest.repos.get({
+                  owner: owner,
+                  repo: repo
+                });
+                console.log(`✅ Token has access to source repository: ${sourceRepo.full_name}`);
+                
+              } catch (permError) {
+                console.error('❌ Token permission test failed:', permError.message);
+                console.error('This indicates the token does not have the required permissions');
+              }
+              
               // Get the artifact details from the source repository
               const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
               const runId = '${{ github.event.inputs.source_run_id }}';
@@ -122,31 +141,82 @@ jobs:
               
               console.log(`✅ Found artifact: ${targetArtifact.name} (ID: ${targetArtifact.id})`);
               
-              // Download the artifact
+              // Download the artifact using GitHub API
+              console.log('📥 Downloading artifact using GitHub API...');
+              
+              const { execSync } = require('child_process');
+              const fs = require('fs');
+              
+              // Use curl with proper authentication
               const downloadUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${targetArtifact.id}/zip`;
               console.log('Download URL:', downloadUrl);
               
-              const { execSync } = require('child_process');
-              const curlCommand = `curl -L -H "Authorization: token ${process.env.GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${downloadUrl}" -o artifact.zip`;
+              // Use the token directly in the Authorization header
+              const token = process.env.GITHUB_TOKEN;
+              console.log(`Using token: ${token ? token.substring(0, 8) + '...' : 'undefined'}`);
+              
+              const curlCommand = `curl -L -H "Authorization: Bearer ${token}" -H "Accept: application/vnd.github.v3+json" -H "User-Agent: GitHub-Actions" "${downloadUrl}" -o artifact.zip`;
               console.log('Executing curl command...');
-              execSync(curlCommand, { stdio: 'inherit' });
               
-              // Check what we downloaded
-              const fs = require('fs');
-              const stats = fs.statSync('artifact.zip');
-              console.log(`Downloaded file size: ${stats.size} bytes`);
-              
-              if (stats.size < 1000) {
-                // File is too small, likely an error response
-                const content = fs.readFileSync('artifact.zip', 'utf8');
-                console.log('Downloaded content (likely error):', content);
-                throw new Error(`Download failed - got error response: ${content}`);
+              try {
+                execSync(curlCommand, { stdio: 'inherit' });
+                
+                // Check what we downloaded
+                const stats = fs.statSync('artifact.zip');
+                console.log(`Downloaded file size: ${stats.size} bytes`);
+                
+                if (stats.size < 1000) {
+                  // File is too small, likely an error response
+                  const content = fs.readFileSync('artifact.zip', 'utf8');
+                  console.log('Downloaded content (likely error):', content);
+                  throw new Error(`Download failed - got error response: ${content}`);
+                }
+                
+                // Extract the zip file
+                console.log('Extracting artifact...');
+                execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                execSync('rm artifact.zip', { stdio: 'inherit' });
+                
+              } catch (curlError) {
+                console.error('❌ Curl download failed:', curlError.message);
+                
+                // Try alternative approach using GitHub API
+                console.log('🔄 Trying alternative download method...');
+                
+                try {
+                  const { data: artifactData } = await github.rest.actions.downloadArtifact({
+                    owner: owner,
+                    repo: repo,
+                    artifact_id: targetArtifact.id,
+                    archive_format: 'zip'
+                  });
+                  
+                  // This should return a redirect URL, but let's try a different approach
+                  console.log('GitHub API response:', artifactData);
+                  
+                  // Fallback: try with different headers
+                  const fallbackCommand = `curl -L -H "Authorization: token ${token}" -H "Accept: application/vnd.github.v3+json" -H "X-GitHub-Api-Version: 2022-11-28" "${downloadUrl}" -o artifact.zip`;
+                  console.log('Trying fallback command...');
+                  execSync(fallbackCommand, { stdio: 'inherit' });
+                  
+                  const stats = fs.statSync('artifact.zip');
+                  console.log(`Fallback download size: ${stats.size} bytes`);
+                  
+                  if (stats.size < 1000) {
+                    const content = fs.readFileSync('artifact.zip', 'utf8');
+                    console.log('Fallback content:', content);
+                    throw new Error(`Fallback download also failed: ${content}`);
+                  }
+                  
+                  console.log('Extracting artifact...');
+                  execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                  execSync('rm artifact.zip', { stdio: 'inherit' });
+                  
+                } catch (fallbackError) {
+                  console.error('❌ All download methods failed:', fallbackError.message);
+                  throw new Error(`Failed to download artifact after multiple attempts: ${fallbackError.message}`);
+                }
               }
-              
-              // Extract the zip file
-              console.log('Extracting artifact...');
-              execSync('unzip -o artifact.zip', { stdio: 'inherit' });
-              execSync('rm artifact.zip', { stdio: 'inherit' });
               
               // Find the APK file
               const files = fs.readdirSync('.');
