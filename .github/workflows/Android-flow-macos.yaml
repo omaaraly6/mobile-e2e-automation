@@ -283,7 +283,7 @@ jobs:
           
       - name: Start Emulator and Run Tests
         run: |
-          # Start emulator with explicit QEMU options to disable HVF
+          # Start emulator with minimal options to avoid HVF
           $ANDROID_HOME/emulator/emulator \
             -avd test \
             -port 5554 \
@@ -293,27 +293,8 @@ jobs:
             -no-boot-anim \
             -gpu swiftshader_indirect \
             -accel off \
-            -machine virt,gic-version=2 \
-            -cpu cortex-a57 \
-            -smp 2 \
-            -m 2048M \
-            -kernel $ANDROID_HOME/system-images/android-29/default/arm64-v8a/kernel-ranchu \
-            -data $ANDROID_HOME/system-images/android-29/default/arm64-v8a/userdata.img \
-            -ramdisk $ANDROID_HOME/system-images/android-29/default/arm64-v8a/ramdisk.img \
-            -system $ANDROID_HOME/system-images/android-29/default/arm64-v8a/system.img \
-            -vendor $ANDROID_HOME/system-images/android-29/default/arm64-v8a/vendor.img \
-            -netdev user,id=net0 \
-            -device virtio-net-device,netdev=net0 \
-            -device virtio-gpu-pci \
-            -device virtio-keyboard-pci \
-            -device virtio-mouse-pci \
-            -device virtio-tablet-pci \
-            -device virtio-rng-pci \
-            -device virtio-balloon-pci \
-            -device virtio-9p-pci,fsdev=fsdev0,mount_tag=shared \
-            -fsdev local,security_model=passthrough,id=fsdev0,path=/tmp \
-            -serial stdio \
-            -append "console=ttyAMA0,38400 keep_bootcon root=/dev/ram0 androidboot.hardware=ranchu androidboot.serialno=EMULATOR29X0X0X0 qemu=1" &
+            -cores 2 \
+            -memory 2048 &
           
           # Wait for emulator to start
           echo "Waiting for emulator to start..."
