@@ -256,7 +256,7 @@ jobs:
           arch: arm64-v8a
           ram-size: 2048M
           target: google_apis
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off -machine virt,gic-version=2
           script: |
             echo "Waiting for emulator to boot..."
             boot_completed=""
