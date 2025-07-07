@@ -14,7 +14,7 @@ on:
       source_run_id:
         description: 'Source workflow run ID'
         required: true
-        default: '16124407462'
+        default: '16123259003'
       project_name:
         description: 'Project name'
         required: true
@@ -26,7 +26,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, macOS]
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -45,6 +45,15 @@ jobs:
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
       
+      - name: Debug Input Parameters
+        run: |
+          echo "🔍 Debug Input Parameters:"
+          echo "apk_artifact_name: ${{ github.event.inputs.apk_artifact_name }}"
+          echo "source_repo: ${{ github.event.inputs.source_repo }}"
+          echo "source_run_id: ${{ github.event.inputs.source_run_id }}"
+          echo "project_name: ${{ github.event.inputs.project_name }}"
+          echo "pr_number: ${{ github.event.inputs.pr_number }}"
+      
       - name: Download APK from source repository
         uses: actions/github-script@v7
         with:
@@ -60,19 +69,46 @@ jobs:
               
               console.log(`Source: ${owner}/${repo}, Run: ${runId}, Artifact: ${artifactName}`);
               
-              // List artifacts to find the one we need
+              // First, verify the workflow run exists
+              try {
+                const { data: workflowRun } = await github.rest.actions.getWorkflowRun({
+                  owner: owner,
+                  repo: repo,
+                  run_id: runId
+                });
+                console.log(`✅ Workflow run found: #${workflowRun.id} (${workflowRun.status})`);
+                console.log(`Created: ${workflowRun.created_at}`);
+                console.log(`Updated: ${workflowRun.updated_at}`);
+              } catch (runError) {
+                console.error(`❌ Workflow run ${runId} not found:`, runError.message);
+                throw new Error(`Workflow run ${runId} not found in ${owner}/${repo}`);
+              }
+              
+              // List all artifacts in the workflow run
+              console.log('🔍 Listing all artifacts in the workflow run...');
               const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
                 owner: owner,
                 repo: repo,
                 run_id: runId
               });
               
+              console.log(`Found ${artifacts.artifacts.length} artifacts:`);
+              artifacts.artifacts.forEach(artifact => {
+                console.log(`- ${artifact.name} (ID: ${artifact.id}, Size: ${artifact.size_in_bytes} bytes, Created: ${artifact.created_at})`);
+              });
+              
+              // Find the target artifact
               const targetArtifact = artifacts.artifacts.find(artifact => 
                 artifact.name === artifactName
               );
               
               if (!targetArtifact) {
-                throw new Error(`Artifact '${artifactName}' not found in run ${runId}`);
+                console.error(`❌ Artifact '${artifactName}' not found in run ${runId}`);
+                console.error('Available artifacts:');
+                artifacts.artifacts.forEach(artifact => {
+                  console.error(`  - ${artifact.name}`);
+                });
+                throw new Error(`Artifact '${artifactName}' not found in run ${runId}. Available: ${artifacts.artifacts.map(a => a.name).join(', ')}`);
               }
               
               console.log(`✅ Found artifact: ${targetArtifact.name} (ID: ${targetArtifact.id})`);
@@ -83,14 +119,27 @@ jobs:
               
               const { execSync } = require('child_process');
               const curlCommand = `curl -L -H "Authorization: token ${process.env.GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${downloadUrl}" -o artifact.zip`;
+              console.log('Executing curl command...');
               execSync(curlCommand, { stdio: 'inherit' });
               
+              // Check what we downloaded
+              const fs = require('fs');
+              const stats = fs.statSync('artifact.zip');
+              console.log(`Downloaded file size: ${stats.size} bytes`);
+              
+              if (stats.size < 1000) {
+                // File is too small, likely an error response
+                const content = fs.readFileSync('artifact.zip', 'utf8');
+                console.log('Downloaded content (likely error):', content);
+                throw new Error(`Download failed - got error response: ${content}`);
+              }
+              
               // Extract the zip file
+              console.log('Extracting artifact...');
               execSync('unzip -o artifact.zip', { stdio: 'inherit' });
               execSync('rm artifact.zip', { stdio: 'inherit' });
               
               // Find the APK file
-              const fs = require('fs');
               const files = fs.readdirSync('.');
               console.log('Extracted files:', files);
               
@@ -104,6 +153,21 @@ jobs:
               
             } catch (error) {
               console.error('❌ Failed to download APK:', error.message);
+              console.error('Error details:', error);
+              
+              // Provide helpful debugging information
+              console.log('');
+              console.log('🔧 Debugging Tips:');
+              console.log('1. Check if the source workflow run exists and completed successfully');
+              console.log('2. Verify the artifact name matches exactly');
+              console.log('3. Ensure the artifact hasn\'t expired (artifacts are deleted after 90 days)');
+              console.log('4. Check if the source repository is accessible');
+              console.log('');
+              console.log('📋 Manual APK Download Instructions:');
+              console.log('1. Go to the source workflow run');
+              console.log('2. Download the APK artifact manually');
+              console.log('3. Upload it to this workflow run');
+              
               throw error;
             }
       
