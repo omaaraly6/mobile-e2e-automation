@@ -260,15 +260,6 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -accel off
           script: |
-            echo "Waiting for emulator to boot..."
-            boot_completed=""
-            until [[ "$boot_completed" == "1" ]]; do
-              sleep 10
-              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "boot_completed=$boot_completed"
-            done
-            echo "Emulator is ready."
-            
             # Install the downloaded APK
             APK_FILE=$(find . -name "*.apk" | head -1)
             if [ -n "$APK_FILE" ]; then
