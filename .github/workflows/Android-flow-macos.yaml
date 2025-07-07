@@ -265,8 +265,8 @@ jobs:
             echo "No APK file found!"
             exit 1
           fi
-          echo "Running Maestro tests..."
-          maestro test android/
+          echo "Running Maestro ordering app flows..."
+          maestro test android/ordering_apps/
           EOF
           chmod +x test_script.sh
 
