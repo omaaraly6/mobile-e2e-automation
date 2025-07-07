@@ -403,19 +403,31 @@ jobs:
           echo "🧪 Running Maestro ordering app flows..."
           echo "📍 Running from current directory: $(pwd)"
           
-          # Try with config file first
-          if maestro test android/ordering_apps/ --config android/ordering_apps/config.yaml; then
+          # Change to the ordering_apps directory for proper relative paths
+          cd android/ordering_apps/
+          echo "📍 Now in directory: $(pwd)"
+          echo "📋 Files in current directory:"
+          ls -la
+          
+          # Try with config file first (using relative paths)
+          if maestro test . --config config.yaml; then
             echo "✅ Tests completed successfully with config"
           else
             echo "⚠️  Config-based execution failed, trying without config..."
-            if maestro test android/ordering_apps/; then
+            if maestro test .; then
               echo "✅ Tests completed successfully without config"
             else
-              echo "❌ All test execution methods failed"
-              echo "📋 Let's try running individual flows:"
-              for flow in $(find android/ordering_apps/ -name "*.yaml" -not -path "*/pages/*" -not -name "config.yaml"); do
-                echo "🧪 Running flow: $flow"
-                maestro test "$flow" || echo "❌ Flow failed: $flow"
+              echo "❌ Directory-based execution failed, trying individual flows..."
+              echo "📋 Running individual flows:"
+              
+              # Run flows in the order specified in config
+              for flow in login/login.yaml pickup_ordering/pickupordering.yaml pickup_ordering/cancelorder.yaml delivery_ordering/deliveryordering.yaml delivery_ordering/cancelorder.yaml login/logout.yaml; do
+                if [ -f "$flow" ]; then
+                  echo "🧪 Running flow: $flow"
+                  maestro test "$flow" || echo "❌ Flow failed: $flow"
+                else
+                  echo "⚠️  Flow not found: $flow"
+                fi
               done
             fi
           fi
