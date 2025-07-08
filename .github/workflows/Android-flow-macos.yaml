@@ -458,3 +458,77 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 3072 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -qemu -smp 2 -m 3072
           script: ./test_script.sh
         timeout-minutes: 35
+        
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: maestro-test-reports-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/*
+            **/test-results/**
+            **/maestro-results/**
+          retention-days: 30
+          
+      - name: Upload Debug Artifacts (Screenshots & Logs)
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: maestro-debug-artifacts-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/screenshots/**
+            ~/.maestro/tests/**/logs/**
+            ~/.maestro/tests/**/*.png
+            ~/.maestro/tests/**/*.jpg
+            ~/.maestro/tests/**/*.log
+            ~/.maestro/tests/**/*.xml
+            ~/.maestro/tests/**/*.json
+          retention-days: 30
+          
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "# 🧪 Maestro Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Execution Overview" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK**: ${{ github.event.inputs.apk_artifact_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: ${{ github.event.inputs.project_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🗂️ Debug Artifacts Available" >> $GITHUB_STEP_SUMMARY
+          echo "The following debug artifacts have been uploaded:" >> $GITHUB_STEP_SUMMARY
+          echo "- 📱 **Screenshots**: UI state at each test step" >> $GITHUB_STEP_SUMMARY
+          echo "- 📋 **Logs**: Detailed execution logs" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 **Test Reports**: Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 **UI Hierarchy**: Element structure for debugging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count debug directories
+          DEBUG_DIRS=$(find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | wc -l)
+          echo "## 📁 Debug Output Locations" >> $GITHUB_STEP_SUMMARY
+          echo "Found **$DEBUG_DIRS** test execution(s) with debug output:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List debug directories with details
+          if [ "$DEBUG_DIRS" -gt 0 ]; then
+            find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | while read dir; do
+              TEST_NAME=$(basename "$(dirname "$dir")" 2>/dev/null || echo "Unknown")
+              TIMESTAMP=$(basename "$dir")
+              SCREENSHOT_COUNT=$(find "$dir" -name "*.png" 2>/dev/null | wc -l)
+              echo "### 🧪 Test: $TEST_NAME" >> $GITHUB_STEP_SUMMARY
+              echo "- **Timestamp**: $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+              echo "- **Screenshots**: $SCREENSHOT_COUNT files" >> $GITHUB_STEP_SUMMARY
+              echo "- **Path**: \`$dir\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          
+          echo "## 🔗 How to Access Debug Files" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the **Actions** tab of this repository" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click on this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "3. Scroll down to **Artifacts** section" >> $GITHUB_STEP_SUMMARY
+          echo "4. Download the artifacts you need:" >> $GITHUB_STEP_SUMMARY
+          echo "   - 📊 \`maestro-test-reports-${{ github.run_number }}\` - Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "   - 🖼️ \`maestro-debug-artifacts-${{ github.run_number }}\` - Screenshots & logs" >> $GITHUB_STEP_SUMMARY
