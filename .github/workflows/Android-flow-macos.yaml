@@ -37,26 +37,20 @@ jobs:
           
       - uses: android-actions/setup-android@v2
           
-      - name: Enable KVM for GitHub-hosted runners
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm || true
-          sudo usermod -a -G kvm $USER || true
-          
       - name: Check System Capabilities
         run: |
-          echo "🔍 Checking GitHub-hosted runner capabilities..."
+          echo "🔍 Checking self-hosted runner capabilities..."
           echo "CPU info:"
           lscpu | head -20
           echo "CPU core count: $(nproc)"
-          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support"
+          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support (using ARM emulation)"
           echo "Available space:"
           df -h
           echo "Memory info:"
           free -h
           echo "KVM status:"
-          ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available"
+          ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available (using software emulation)"
+          echo "🔧 Configuration: Using ARM64 emulation without hardware acceleration"
           
       - name: Install Maestro CLI
         run: |
@@ -319,18 +313,18 @@ jobs:
             adb shell getprop sys.boot_completed
             
             # Optimize emulator for faster installation
-            echo "🚀 Optimizing emulator for faster installation..."
-            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal)"
-            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal)"
+            echo "🚀 Optimizing ARM emulator for faster installation..."
+            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal on ARM emulation)"
+            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal on ARM emulation)"
             adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || echo "Could not set CPU governor (this is normal)"
-            echo "✅ Emulator optimization completed"
+            echo "✅ ARM emulator optimization completed"
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
             timeout 20 adb uninstall com.zeal.takosan || echo "No previous installation found"
             
             # Install APK with optimized settings
-            echo "📦 Installing APK (up to 12 minutes timeout on GitHub-hosted runner)..."
+            echo "📦 Installing APK (up to 12 minutes timeout on self-hosted runner)..."
             echo "🔍 APK file info:"
             file "$APK_FILE"
             
@@ -449,13 +443,13 @@ jobs:
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          arch: x86_64
-          ram-size: 3072M
-          disk-size: 6144M
-          target: google_apis
+          api-level: 28
+          arch: arm64-v8a
+          ram-size: 2048M
+          disk-size: 4096M
+          target: default
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 3072 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -qemu -smp 2 -m 3072
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -accel off
           script: ./test_script.sh
         timeout-minutes: 35
         
