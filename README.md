@@ -53,9 +53,7 @@ maestro test android/booking_apps/booking/booking.yaml
 
 1. Start an iOS simulator or connect a device.
 2. Run a script, for example:
-   ```sh
-maestro test ios/booking_apps/booking/booking.yaml
-```
+   ```sh maestro test ios/booking_apps/booking/booking.yaml ```
 
 ## Example: Run All Booking Scripts
 
