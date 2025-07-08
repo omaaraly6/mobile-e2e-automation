@@ -1,94 +1,460 @@
-# name: Maestro Android Test
-
-# on:
-#   # push:
-#   #   branches:
-#   #     - test
-#   workflow_dispatch:
-
-# jobs:
-#   maestro-test-android:
-#     runs-on: macos-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v3
-        
-#       - name: Setup Java
-#         uses: actions/setup-java@v3
-#         with:
-#           distribution: 'zulu'
-#           java-version: '17'
-          
-#       - name: Setup Android SDK
-#         uses: android-actions/setup-android@v2
-        
-#       - name: Install Maestro CLI
-#         run: |
-#           brew tap mobile-dev-inc/tap
-#           brew install maestro
-          
-#       - name: Set Maestro Timeout Environment Variable
-#         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
-          
-#       - name: Download Android App
-#         run: |
-#           curl -L -o challaztopfade.apk "https://expo.dev/artifacts/eas/jZrydfYWfmK4GnYje3zX1x.apk"
-          
-#       - name: Create and Launch Emulator
-#         uses: reactivecircus/android-emulator-runner@v2
-#         with:
-#           api-level: 33
-#           target: google_apis
-#           arch: x86_64
-#           profile: pixel
-#           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-#           disable-animations: true
-#           force-avd-creation: true
-#           emulator-build: 7425822  # Specify a stable emulator build
-#           script: |
-#             # Wait for emulator to be fully available
-#             adb devices
-#             sleep 10
-#             adb devices
-            
-#             # Install app and run tests
-#             adb install challaztopfade.apk
-#             maestro test android/
-
-
 name: Maestro Android Test on macOS
 
 on:
   workflow_dispatch:
+    inputs:
+      apk_artifact_name:
+        description: 'Name of the APK artifact to download'
+        required: true
+        default: 'android-pr-build-takosan-112'
+      source_repo:
+        description: 'Source repository (owner/repo)'
+        required: true
+        default: 'zeal-io/white-label-apps'
+      source_run_id:
+        description: 'Source workflow run ID'
+        required: true
+        default: '16123259003'
+      project_name:
+        description: 'Project name'
+        required: true
+        default: 'takosan'
+      pr_number:
+        description: 'PR number'
+        required: true
+        default: '796'
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - uses: actions/setup-java@v3
         with:
           distribution: 'adopt'
           java-version: '17'
-      - uses: dniHze/maestro-test-action@v1
-      - name: Download Android App (APK)
+          
+      - uses: android-actions/setup-android@v2
+          
+      - name: Enable KVM for GitHub-hosted runners
         run: |
-          curl -L -o ChallazTopfade.apk "https://expo.dev/artifacts/eas/acfEx68NRza6QhexorkKNz.apk"
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+          sudo usermod -a -G kvm $USER || true
+          
+      - name: Check System Capabilities
+        run: |
+          echo "🔍 Checking GitHub-hosted runner capabilities..."
+          echo "CPU info:"
+          lscpu | head -20
+          echo "CPU core count: $(nproc)"
+          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support"
+          echo "Available space:"
+          df -h
+          echo "Memory info:"
+          free -h
+          echo "KVM status:"
+          ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available"
+          
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          export PATH="$PATH":"$HOME/.maestro/bin"
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          
+      - name: Set Maestro Timeout Environment Variable
+        run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
+      
+      - name: Debug Input Parameters
+        run: |
+          echo "🔍 Debug Input Parameters:"
+          echo "apk_artifact_name: ${{ github.event.inputs.apk_artifact_name }}"
+          echo "source_repo: ${{ github.event.inputs.source_repo }}"
+          echo "source_run_id: ${{ github.event.inputs.source_run_id }}"
+          echo "project_name: ${{ github.event.inputs.project_name }}"
+          echo "pr_number: ${{ github.event.inputs.pr_number }}"
+      
+      - name: Download APK from source repository
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CROSS_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              console.log('📥 Downloading APK artifact from source repository...');
+              
+              // Check which token we're using
+              const hasCrossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}' !== '';
+              console.log('🔍 Token check - CROSS_REPO_TOKEN exists:', hasCrossRepoToken);
+              if (!hasCrossRepoToken) {
+                console.log('⚠️  No CROSS_REPO_TOKEN found - using GITHUB_TOKEN (may not work for cross-repo access)');
+              } else {
+                console.log('✅ Using CROSS_REPO_TOKEN for cross-repository access');
+              }
+              
+              // Test token permissions
+              console.log('🔍 Testing token permissions...');
+              try {
+                const { data: user } = await github.rest.users.getAuthenticated();
+                console.log(`✅ Token authenticated as: ${user.login}`);
+                
+                // Test access to source repository
+                const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
+                const { data: sourceRepo } = await github.rest.repos.get({
+                  owner: owner,
+                  repo: repo
+                });
+                console.log(`✅ Token has access to source repository: ${sourceRepo.full_name}`);
+                
+              } catch (permError) {
+                console.error('❌ Token permission test failed:', permError.message);
+                console.error('This indicates the token does not have the required permissions');
+              }
+              
+              // Get the artifact details from the source repository
+              const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
+              const runId = '${{ github.event.inputs.source_run_id }}';
+              const artifactName = '${{ github.event.inputs.apk_artifact_name }}';
+              
+              console.log(`Source: ${owner}/${repo}, Run: ${runId}, Artifact: ${artifactName}`);
+              
+              // First, verify the workflow run exists
+              try {
+                const { data: workflowRun } = await github.rest.actions.getWorkflowRun({
+                  owner: owner,
+                  repo: repo,
+                  run_id: runId
+                });
+                console.log(`✅ Workflow run found: #${workflowRun.id} (${workflowRun.status})`);
+                console.log(`Created: ${workflowRun.created_at}`);
+                console.log(`Updated: ${workflowRun.updated_at}`);
+              } catch (runError) {
+                console.error(`❌ Workflow run ${runId} not found:`, runError.message);
+                throw new Error(`Workflow run ${runId} not found in ${owner}/${repo}`);
+              }
+              
+              // List all artifacts in the workflow run
+              console.log('🔍 Listing all artifacts in the workflow run...');
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: owner,
+                repo: repo,
+                run_id: runId
+              });
+              
+              console.log(`Found ${artifacts.artifacts.length} artifacts:`);
+              artifacts.artifacts.forEach(artifact => {
+                console.log(`- ${artifact.name} (ID: ${artifact.id}, Size: ${artifact.size_in_bytes} bytes, Created: ${artifact.created_at})`);
+              });
+              
+              // Find the target artifact
+              const targetArtifact = artifacts.artifacts.find(artifact => 
+                artifact.name === artifactName
+              );
+              
+              if (!targetArtifact) {
+                console.error(`❌ Artifact '${artifactName}' not found in run ${runId}`);
+                console.error('Available artifacts:');
+                artifacts.artifacts.forEach(artifact => {
+                  console.error(`  - ${artifact.name}`);
+                });
+                throw new Error(`Artifact '${artifactName}' not found in run ${runId}. Available: ${artifacts.artifacts.map(a => a.name).join(', ')}`);
+              }
+              
+              console.log(`✅ Found artifact: ${targetArtifact.name} (ID: ${targetArtifact.id})`);
+              
+              // Download the artifact using GitHub API directly
+              console.log('📥 Downloading artifact using GitHub API...');
+              
+              const fs = require('fs');
+              const https = require('https');
+              
+              try {
+                // Use the GitHub API to get the download URL
+                const { data: artifactData } = await github.rest.actions.downloadArtifact({
+                  owner: owner,
+                  repo: repo,
+                  artifact_id: targetArtifact.id,
+                  archive_format: 'zip'
+                });
+                
+                console.log('✅ GitHub API download successful!');
+                console.log(`Downloaded ${artifactData.byteLength} bytes`);
+                
+                // Write the binary data to a file
+                fs.writeFileSync('artifact.zip', Buffer.from(artifactData));
+                
+                // Check what we downloaded
+                const stats = fs.statSync('artifact.zip');
+                console.log(`Downloaded file size: ${stats.size} bytes`);
+                
+                if (stats.size < 1000) {
+                  // File is too small, likely an error response
+                  const content = fs.readFileSync('artifact.zip', 'utf8');
+                  console.log('Downloaded content (likely error):', content);
+                  throw new Error(`Download failed - got error response: ${content}`);
+                }
+                
+                // Extract the zip file
+                console.log('Extracting artifact...');
+                const { execSync } = require('child_process');
+                execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                execSync('rm artifact.zip', { stdio: 'inherit' });
+                
+              } catch (apiError) {
+                console.error('❌ GitHub API download failed:', apiError.message);
+                
+                // Fallback: try with curl using the CROSS_REPO_TOKEN directly
+                console.log('🔄 Trying curl fallback with direct token...');
+                
+                try {
+                  const { execSync } = require('child_process');
+                  
+                  // Get the token from the secret directly
+                  const crossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}';
+                  console.log(`Using CROSS_REPO_TOKEN: ${crossRepoToken ? crossRepoToken.substring(0, 8) + '...' : 'undefined'}`);
+                  
+                  const downloadUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${targetArtifact.id}/zip`;
+                  const curlCommand = `curl -L -H "Authorization: Bearer ${crossRepoToken}" -H "Accept: application/vnd.github.v3+json" -H "User-Agent: GitHub-Actions" "${downloadUrl}" -o artifact.zip`;
+                  
+                  console.log('Executing curl command with direct token...');
+                  execSync(curlCommand, { stdio: 'inherit' });
+                  
+                  const stats = fs.statSync('artifact.zip');
+                  console.log(`Fallback download size: ${stats.size} bytes`);
+                  
+                  if (stats.size < 1000) {
+                    const content = fs.readFileSync('artifact.zip', 'utf8');
+                    console.log('Fallback content:', content);
+                    throw new Error(`Fallback download also failed: ${content}`);
+                  }
+                  
+                  console.log('Extracting artifact...');
+                  execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                  execSync('rm artifact.zip', { stdio: 'inherit' });
+                  
+                } catch (fallbackError) {
+                  console.error('❌ All download methods failed:', fallbackError.message);
+                  throw new Error(`Failed to download artifact after multiple attempts: ${fallbackError.message}`);
+                }
+              }
+              
+              // Find the APK file
+              const files = fs.readdirSync('.');
+              console.log('Extracted files:', files);
+              
+              const apkFile = files.find(file => file.endsWith('.apk'));
+              if (apkFile) {
+                console.log(`✅ APK downloaded: ${apkFile}`);
+                core.setOutput('apk-file', apkFile);
+              } else {
+                throw new Error('No APK file found in downloaded artifact');
+              }
+              
+            } catch (error) {
+              console.error('❌ Failed to download APK:', error.message);
+              console.error('Error details:', error);
+              
+              // Provide helpful debugging information
+              console.log('');
+              console.log('🔧 Debugging Tips:');
+              console.log('1. Check if the source workflow run exists and completed successfully');
+              console.log('2. Verify the artifact name matches exactly');
+              console.log('3. Ensure the artifact hasn\'t expired (artifacts are deleted after 90 days)');
+              console.log('4. Check if the source repository is accessible');
+              console.log('');
+              console.log('📋 Manual APK Download Instructions:');
+              console.log('1. Go to the source workflow run');
+              console.log('2. Download the APK artifact manually');
+              console.log('3. Upload it to this workflow run');
+              
+              throw error;
+            }
+      
+      - name: Create test script
+        run: |
+          cat > test_script.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Function to run commands with timeout
+          run_with_timeout() {
+            timeout "$1" "${@:2}" || {
+              echo "❌ Command timed out after $1 seconds: ${@:2}"
+              return 1
+            }
+          }
+          
+          echo "🔍 Looking for APK file..."
+          APK_FILE=$(find . -name "*.apk" | head -1)
+          if [ -n "$APK_FILE" ]; then
+            echo "📱 Installing APK: $APK_FILE"
+            
+            # Validate APK file
+            APK_SIZE=$(ls -lh "$APK_FILE" | awk '{print $5}')
+            echo "📊 APK file size: $APK_SIZE"
+            
+            # Check if file is too small (likely corrupted)
+            APK_BYTES=$(stat -c%s "$APK_FILE")
+            if [ "$APK_BYTES" -lt 1000000 ]; then
+              echo "⚠️  WARNING: APK file is very small (${APK_SIZE}) - may be corrupted"
+              echo "🔍 File content preview:"
+              head -c 100 "$APK_FILE" | xxd || echo "Could not read file"
+            fi
+            
+            # Check file type
+            FILE_TYPE=$(file "$APK_FILE")
+            echo "📋 File type: $FILE_TYPE"
+            if echo "$FILE_TYPE" | grep -q "Android"; then
+              echo "✅ File appears to be a valid Android APK"
+            elif echo "$FILE_TYPE" | grep -q -i "zip"; then
+              echo "ℹ️  File is a ZIP archive (APKs are ZIP-based, this is normal)"
+            else
+              echo "⚠️  WARNING: File type unclear - proceeding anyway"
+            fi
+            
+            # Check emulator status and optimize for installation
+            echo "🔍 Checking emulator status..."
+            adb devices -l
+            adb shell getprop sys.boot_completed
+            
+            # Optimize emulator for faster installation
+            echo "🚀 Optimizing emulator for faster installation..."
+            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal)"
+            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal)"
+            adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || echo "Could not set CPU governor (this is normal)"
+            echo "✅ Emulator optimization completed"
+            
+            # Uninstall any previous version first
+            echo "🗑️ Uninstalling previous version..."
+            timeout 20 adb uninstall com.zeal.takosan || echo "No previous installation found"
+            
+            # Install APK with optimized settings
+            echo "📦 Installing APK (up to 12 minutes timeout on GitHub-hosted runner)..."
+            echo "🔍 APK file info:"
+            file "$APK_FILE"
+            
+            echo "⚡ Starting fast installation..."
+            INSTALL_START=$(date +%s)
+            # Use streaming install with optimizations for faster installation
+            if run_with_timeout 720 adb install -r -t -g --streaming "$APK_FILE"; then
+              INSTALL_END=$(date +%s)
+              INSTALL_TIME=$((INSTALL_END - INSTALL_START))
+              echo "✅ APK installed successfully in ${INSTALL_TIME} seconds"
+              
+              if [ "$INSTALL_TIME" -lt 10 ]; then
+                echo "⚠️  WARNING: Installation completed very quickly (${INSTALL_TIME}s) - this may indicate a problem"
+              fi
+            else
+              echo "❌ APK installation failed!"
+              echo "📋 Checking adb connection..."
+              adb devices -l
+              echo "📋 Checking emulator storage:"
+              adb shell df /data
+              exit 1
+            fi
+            
+            # Verify installation immediately
+            echo "🔍 Checking if app was installed..."
+            
+            # Wait a moment for package manager to update
+            sleep 2
+            
+            FOUND_PACKAGE=$(adb shell pm list packages | grep takosan || echo "")
+            if [ -n "$FOUND_PACKAGE" ]; then
+              echo "✅ App found: $FOUND_PACKAGE"
+              
+              # Get detailed package info
+              echo "📋 Package details:"
+              adb shell dumpsys package com.zeal.takosan | grep -E "(versionName|versionCode|targetSdk)" || echo "Could not get package details"
+              
+              # Check if app can be launched
+              echo "🚀 Testing app launch capability..."
+              adb shell am start -n com.zeal.takosan/.MainActivity >/dev/null 2>&1 && echo "✅ App can be launched" || echo "⚠️  App launch test failed (this might be normal)"
+              
+            else
+              echo "❌ App not found after installation!"
+              echo "📋 All installed packages:"
+              adb shell pm list packages | head -20
+              echo "📋 Checking for any zeal packages:"
+              adb shell pm list packages | grep zeal || echo "No zeal packages found"
+              echo "📋 Checking installation errors:"
+              adb logcat -d | tail -20 | grep -i "install\|package" || echo "No relevant logs found"
+              exit 1
+            fi
+            
+            # Grant permissions that might be needed
+            echo "🔐 Granting permissions..."
+            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
+            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
+            
+            # Final verification
+            echo "✅ Final verification..."
+            INSTALLED_PACKAGE=$(adb shell pm list packages | grep takosan | head -1)
+            echo "📱 Installed: $INSTALLED_PACKAGE"
+            
+          else
+            echo "❌ No APK file found!"
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          
+          echo "📋 Checking available flows..."
+          echo "📁 Current directory structure:"
+          ls -la
+          echo "📁 Android directory structure:"
+          ls -la android/
+          echo "📁 Ordering apps directory:"
+          ls -la android/ordering_apps/
+          echo "📋 Config file contents:"
+          cat android/ordering_apps/config.yaml
+          echo "📋 Available test files:"
+          find android/ordering_apps/ -name "*.yaml" -type f
+          
+          echo "🧪 Running Maestro ordering app flows..."
+          echo "📍 Running from current directory: $(pwd)"
+          
+          # Change to the ordering_apps directory for proper relative paths
+          cd android/ordering_apps/
+          echo "📍 Now in directory: $(pwd)"
+          echo "📋 Files in current directory:"
+          ls -la
+          
+          # Try with config file first (using relative paths)
+          if maestro test . --config config.yaml; then
+            echo "✅ Tests completed successfully with config"
+          else
+            echo "⚠️  Config-based execution failed, trying without config..."
+            if maestro test .; then
+              echo "✅ Tests completed successfully without config"
+            else
+              echo "❌ Directory-based execution failed, trying individual flows..."
+              echo "📋 Running individual flows:"
+              
+              # Run flows in the order specified in config
+              for flow in login/login.yaml pickup_ordering/pickupordering.yaml pickup_ordering/cancelorder.yaml delivery_ordering/deliveryordering.yaml delivery_ordering/cancelorder.yaml login/logout.yaml; do
+                if [ -f "$flow" ]; then
+                  echo "🧪 Running flow: $flow"
+                  maestro test "$flow" || echo "❌ Flow failed: $flow"
+                else
+                  echo "⚠️  Flow not found: $flow"
+                fi
+              done
+            fi
+          fi
+          EOF
+          chmod +x test_script.sh
+
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
-          arch: arm64-v8a
-          ram-size: 2048M
-          target: default
-          script: |
-            echo "Waiting for emulator to boot..."
-            boot_completed=""
-            until [[ "$boot_completed" == "1" ]]; do
-              sleep 5
-              boot_completed=$(adb -e shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              echo "boot_completed=$boot_completed"
-            done
-            echo "Emulator is ready."
-            adb install ChallazTopfade.apk
-            maestro test android/
+          api-level: 30
+          arch: x86_64
+          ram-size: 3072M
+          disk-size: 6144M
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 3072 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -qemu -smp 2 -m 3072
+          script: ./test_script.sh
+        timeout-minutes: 35
