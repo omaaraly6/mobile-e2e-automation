@@ -43,14 +43,14 @@ jobs:
           echo "CPU info:"
           lscpu | head -20
           echo "CPU core count: $(nproc)"
-          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support (using ARM emulation)"
+          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support (using lightweight x86 emulation)"
           echo "Available space:"
           df -h
           echo "Memory info:"
           free -h
           echo "KVM status:"
           ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available (using software emulation)"
-          echo "🔧 Configuration: Using ARM64 emulation without hardware acceleration"
+          echo "🔧 Configuration: Using lightweight x86 emulation without hardware acceleration"
           
       - name: Install Maestro CLI
         run: |
@@ -313,11 +313,11 @@ jobs:
             adb shell getprop sys.boot_completed
             
             # Optimize emulator for faster installation
-            echo "🚀 Optimizing ARM emulator for faster installation..."
-            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal on ARM emulation)"
-            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal on ARM emulation)"
+            echo "🚀 Optimizing lightweight emulator for faster installation..."
+            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal on software emulation)"
+            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal on software emulation)"
             adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || echo "Could not set CPU governor (this is normal)"
-            echo "✅ ARM emulator optimization completed"
+            echo "✅ Lightweight emulator optimization completed"
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
@@ -443,13 +443,13 @@ jobs:
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 28
-          arch: arm64-v8a
-          ram-size: 2048M
-          disk-size: 4096M
+          api-level: 24
+          arch: x86
+          ram-size: 1024M
+          disk-size: 2048M
           target: default
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -accel off
+          emulator-options: -no-window -gpu off -no-snapshot -noaudio -no-boot-anim -memory 1024 -netdelay none -netspeed full -accel off
           script: ./test_script.sh
         timeout-minutes: 35
         
