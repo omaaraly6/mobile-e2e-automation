@@ -26,37 +26,31 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, zeal-gcp-ubuntu-7]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
-      - uses: actions/setup-java@v3
+      - uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
           java-version: '17'
           
       - uses: android-actions/setup-android@v2
           
-      - name: Enable KVM for GitHub-hosted runners
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm || true
-          sudo usermod -a -G kvm $USER || true
-          
       - name: Check System Capabilities
         run: |
-          echo "🔍 Checking GitHub-hosted runner capabilities..."
+          echo "🔍 Checking self-hosted runner capabilities..."
           echo "CPU info:"
           lscpu | head -20
           echo "CPU core count: $(nproc)"
-          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support"
+          grep -E "(vmx|svm)" /proc/cpuinfo && echo "✅ Hardware virtualization supported" || echo "❌ No hardware virtualization support (using ARM emulation)"
           echo "Available space:"
           df -h
           echo "Memory info:"
           free -h
           echo "KVM status:"
-          ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available"
+          ls -la /dev/kvm 2>/dev/null && echo "✅ KVM device available" || echo "❌ KVM device not available (using software emulation)"
+          echo "🔧 Configuration: Using ARM64 emulation without hardware acceleration"
           
       - name: Install Maestro CLI
         run: |
@@ -319,18 +313,18 @@ jobs:
             adb shell getprop sys.boot_completed
             
             # Optimize emulator for faster installation
-            echo "🚀 Optimizing emulator for faster installation..."
-            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal)"
-            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal)"
+            echo "🚀 Optimizing ARM emulator for faster installation..."
+            adb shell setprop dalvik.vm.dex2oat-flags --compiler-filter=speed || echo "Could not set dex2oat flags (this is normal on ARM emulation)"
+            adb shell setprop dalvik.vm.image-dex2oat-flags --compiler-filter=speed || echo "Could not set image-dex2oat flags (this is normal on ARM emulation)"
             adb shell "echo 'performance' > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor" 2>/dev/null || echo "Could not set CPU governor (this is normal)"
-            echo "✅ Emulator optimization completed"
+            echo "✅ ARM emulator optimization completed"
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
             timeout 20 adb uninstall com.zeal.takosan || echo "No previous installation found"
             
             # Install APK with optimized settings
-            echo "📦 Installing APK (up to 12 minutes timeout on GitHub-hosted runner)..."
+            echo "📦 Installing APK (up to 12 minutes timeout on self-hosted runner)..."
             echo "🔍 APK file info:"
             file "$APK_FILE"
             
@@ -449,12 +443,86 @@ jobs:
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          arch: x86_64
-          ram-size: 3072M
-          disk-size: 6144M
-          target: google_apis
+          api-level: 28
+          arch: arm64-v8a
+          ram-size: 2048M
+          disk-size: 4096M
+          target: default
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 3072 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -qemu -smp 2 -m 3072
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 2048 -cores 2 -skin 1080x1920 -netdelay none -netspeed full -accel off
           script: ./test_script.sh
         timeout-minutes: 35
+        
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-test-reports-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/*
+            **/test-results/**
+            **/maestro-results/**
+          retention-days: 30
+          
+      - name: Upload Debug Artifacts (Screenshots & Logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-artifacts-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/screenshots/**
+            ~/.maestro/tests/**/logs/**
+            ~/.maestro/tests/**/*.png
+            ~/.maestro/tests/**/*.jpg
+            ~/.maestro/tests/**/*.log
+            ~/.maestro/tests/**/*.xml
+            ~/.maestro/tests/**/*.json
+          retention-days: 30
+          
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "# 🧪 Maestro Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Execution Overview" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK**: ${{ github.event.inputs.apk_artifact_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: ${{ github.event.inputs.project_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🗂️ Debug Artifacts Available" >> $GITHUB_STEP_SUMMARY
+          echo "The following debug artifacts have been uploaded:" >> $GITHUB_STEP_SUMMARY
+          echo "- 📱 **Screenshots**: UI state at each test step" >> $GITHUB_STEP_SUMMARY
+          echo "- 📋 **Logs**: Detailed execution logs" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 **Test Reports**: Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 **UI Hierarchy**: Element structure for debugging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count debug directories
+          DEBUG_DIRS=$(find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | wc -l)
+          echo "## 📁 Debug Output Locations" >> $GITHUB_STEP_SUMMARY
+          echo "Found **$DEBUG_DIRS** test execution(s) with debug output:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List debug directories with details
+          if [ "$DEBUG_DIRS" -gt 0 ]; then
+            find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | while read dir; do
+              TEST_NAME=$(basename "$(dirname "$dir")" 2>/dev/null || echo "Unknown")
+              TIMESTAMP=$(basename "$dir")
+              SCREENSHOT_COUNT=$(find "$dir" -name "*.png" 2>/dev/null | wc -l)
+              echo "### 🧪 Test: $TEST_NAME" >> $GITHUB_STEP_SUMMARY
+              echo "- **Timestamp**: $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+              echo "- **Screenshots**: $SCREENSHOT_COUNT files" >> $GITHUB_STEP_SUMMARY
+              echo "- **Path**: \`$dir\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          
+          echo "## 🔗 How to Access Debug Files" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the **Actions** tab of this repository" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click on this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "3. Scroll down to **Artifacts** section" >> $GITHUB_STEP_SUMMARY
+          echo "4. Download the artifacts you need:" >> $GITHUB_STEP_SUMMARY
+          echo "   - 📊 \`maestro-test-reports-${{ github.run_number }}\` - Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "   - 🖼️ \`maestro-debug-artifacts-${{ github.run_number }}\` - Screenshots & logs" >> $GITHUB_STEP_SUMMARY
