@@ -6,7 +6,7 @@ on:
       apk_artifact_name:
         description: 'Name of the APK artifact to download'
         required: true
-        default: 'android-pr-build-takosan-112'
+        default: 'android-pr-build-coffeeberry-112'
       source_repo:
         description: 'Source repository (owner/repo)'
         required: true
@@ -18,7 +18,7 @@ on:
       project_name:
         description: 'Project name'
         required: true
-        default: 'takosan'
+        default: 'coffeeberry'
       pr_number:
         description: 'PR number'
         required: true
@@ -327,7 +327,7 @@ jobs:
             
             # Uninstall any previous version first
             echo "🗑️ Uninstalling previous version..."
-            timeout 20 adb uninstall com.zeal.takosan || echo "No previous installation found"
+            timeout 20 adb uninstall com.zeal.coffeeberry || echo "No previous installation found"
             
             # Install APK with optimized settings
             echo "📦 Installing APK (up to 12 minutes timeout on GitHub-hosted runner)..."
@@ -360,17 +360,17 @@ jobs:
             # Wait a moment for package manager to update
             sleep 2
             
-            FOUND_PACKAGE=$(adb shell pm list packages | grep takosan || echo "")
+            FOUND_PACKAGE=$(adb shell pm list packages | grep coffeeberry || echo "")
             if [ -n "$FOUND_PACKAGE" ]; then
               echo "✅ App found: $FOUND_PACKAGE"
               
               # Get detailed package info
               echo "📋 Package details:"
-              adb shell dumpsys package com.zeal.takosan | grep -E "(versionName|versionCode|targetSdk)" || echo "Could not get package details"
+              adb shell dumpsys package com.zeal.coffeeberry | grep -E "(versionName|versionCode|targetSdk)" || echo "Could not get package details"
               
               # Check if app can be launched
               echo "🚀 Testing app launch capability..."
-              adb shell am start -n com.zeal.takosan/.MainActivity >/dev/null 2>&1 && echo "✅ App can be launched" || echo "⚠️  App launch test failed (this might be normal)"
+              adb shell am start -n com.zeal.coffeeberry/.MainActivity >/dev/null 2>&1 && echo "✅ App can be launched" || echo "⚠️  App launch test failed (this might be normal)"
               
             else
               echo "❌ App not found after installation!"
@@ -385,12 +385,12 @@ jobs:
             
             # Grant permissions that might be needed
             echo "🔐 Granting permissions..."
-            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
-            timeout 10 adb shell pm grant com.zeal.takosan android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
+            timeout 10 adb shell pm grant com.zeal.coffeeberry android.permission.ACCESS_FINE_LOCATION || echo "Location permission failed"
+            timeout 10 adb shell pm grant com.zeal.coffeeberry android.permission.ACCESS_COARSE_LOCATION || echo "Coarse location permission failed"
             
             # Final verification
             echo "✅ Final verification..."
-            INSTALLED_PACKAGE=$(adb shell pm list packages | grep takosan | head -1)
+            INSTALLED_PACKAGE=$(adb shell pm list packages | grep coffeeberry | head -1)
             echo "📱 Installed: $INSTALLED_PACKAGE"
             
           else
