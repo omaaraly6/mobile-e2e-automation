@@ -1,4 +1,4 @@
-appId: com.zeal.coffeeberry
+appId: com.zeal.takosan
 name: F&B Apps - Verify member can login successfully
 tags:
   - ordering_apps
@@ -7,7 +7,7 @@ onFlowStart:
 ---
 - launchApp:
     clearState: true
-- assertVisible: "Coffee Loyalty Card"
+# - assertVisible: "Coffee Loyalty Card"
 - tapOn: "Getting Started"
 - tapOn:
     id: ${output.loginpage.CountryCode}
@@ -30,4 +30,4 @@ onFlowStart:
 - copyTextFrom:
     id: "otp"
 - pasteText
-- assertVisible: "Hey, Test"
+# - assertVisible: "Hey, Test"

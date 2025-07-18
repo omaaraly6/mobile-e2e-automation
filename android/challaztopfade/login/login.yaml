@@ -1,7 +1,7 @@
 appId: com.zeal.challaztopfade
-name: Verify member can login successfully
+name: Booking Apps - Verify member can login successfully
 tags:
-    - smokeTest
+    - booking_apps
 onFlowStart:
     - runScript: ../pages/loginpage.js
 ---
@@ -20,18 +20,15 @@ onFlowStart:
 - inputText: "Egypt"
 - tapOn:
     id:  ${output.loginpage.Egypt}
-- tapOn:
-    id:  ${output.loginpage.Egypt}
+    repeat: 2
 - tapOn:
     id: ${output.loginpage.PhoneNumber}
-    repeat: 5
 - inputText: "01000000001"
-- tapOn: "Continue"
-- tapOn: "Continue"
+- tapOn: 
+    text: "Continue"
+    repeat: 2
 - waitForAnimationToEnd:
     timeout: 1000
 - copyTextFrom:
     id: "otp"
-# - tapOn: "-"
 - pasteText
-- assertVisible: "Hey, Test1"

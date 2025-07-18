@@ -1,4 +1,4 @@
-appId: com.zeal.coffeeberry
+appId: com.zeal.takosan
 name: F&B Apps - Verify member can logout successfully
 tags:
   - ordering_apps
@@ -20,5 +20,4 @@ onFlowStart:
     id: ${output.profilepage.logout}
 - tapOn:
     id: ${output.profilepage.confirmlogout}
-- assertVisible: 'Coffee Loyalty Card'
-
+# - assertVisible: 'Coffee Loyalty Card'

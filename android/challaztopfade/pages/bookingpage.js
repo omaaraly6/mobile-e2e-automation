@@ -1,10 +1,9 @@
 output.bookingpage = {
-    branch: 'challaz topfade',
+    branch: 'Test Branch',
     continuebtn: 'continue',
-    technician: 'Tech 6',
-    service: 'Buzz Cutt',
-    slot: '11:00 pm',
+    technician: 'Test Technician',
+    service: 'Test Item',
+    slot: '11:20 pm',
     confirmbooking: 'confirmBooking',
     donebtn: 'done'
-
 }
