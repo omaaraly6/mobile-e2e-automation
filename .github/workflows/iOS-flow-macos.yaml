@@ -428,23 +428,58 @@ jobs:
           echo "🚀 Booting simulator..."
           xcrun simctl boot "$SIMULATOR_UDID"
           
-          # Wait for simulator to be ready
+          # Wait for simulator to be ready (with multiple detection methods)
           echo "⏳ Waiting for simulator to be ready..."
           TIMEOUT=120
           ELAPSED=0
-          while [ $ELAPSED -lt $TIMEOUT ]; do
-            if xcrun simctl bootstatus "$SIMULATOR_UDID" | grep -q "Boot status: Booted"; then
-              echo "✅ Simulator booted successfully!"
+          READY=false
+          
+          while [ $ELAPSED -lt $TIMEOUT ] && [ "$READY" = false ]; do
+            # Method 1: Check boot status
+            if xcrun simctl bootstatus "$SIMULATOR_UDID" 2>/dev/null | grep -q "Boot status: Booted"; then
+              echo "✅ Simulator booted successfully (bootstatus method) in ${ELAPSED} seconds!"
+              READY=true
               break
             fi
+            
+            # Method 2: Check if simulator is in the booted state
+            if xcrun simctl list devices | grep "$SIMULATOR_UDID" | grep -q "(Booted)"; then
+              echo "✅ Simulator booted successfully (list devices method) in ${ELAPSED} seconds!"
+              READY=true
+              break
+            fi
+            
+            # Method 3: Try to get device info (indicates simulator is responsive)
+            if [ $ELAPSED -gt 20 ]; then
+              if xcrun simctl spawn "$SIMULATOR_UDID" launchctl print system 2>/dev/null | grep -q "com.apple."; then
+                echo "✅ Simulator booted successfully (spawn test method) in ${ELAPSED} seconds!"
+                READY=true
+                break
+              fi
+            fi
+            
             sleep 2
             ELAPSED=$((ELAPSED + 2))
-            echo "⏳ Waiting... (${ELAPSED}s/${TIMEOUT}s)"
+            if [ $((ELAPSED % 20)) -eq 0 ]; then
+              echo "⏳ Waiting... (${ELAPSED}s/${TIMEOUT}s)"
+              echo "🔍 Trying multiple detection methods for reliability..."
+            fi
           done
           
-          if [ $ELAPSED -ge $TIMEOUT ]; then
-            echo "❌ Simulator failed to boot within ${TIMEOUT} seconds"
-            exit 1
+          if [ "$READY" = false ]; then
+            echo "⚠️  Boot detection timed out after ${TIMEOUT} seconds"
+            echo "🔍 Final simulator status check:"
+            xcrun simctl list devices | grep "$SIMULATOR_UDID" || echo "Simulator not found in list"
+            echo "📋 Detailed bootstatus output:"
+            xcrun simctl bootstatus "$SIMULATOR_UDID" || echo "Bootstatus command failed"
+            
+            # In CI, we can't prompt user, so check if simulator might be ready anyway
+            if xcrun simctl list devices | grep "$SIMULATOR_UDID" | grep -q "(Booted)"; then
+              echo "✅ Simulator appears to be booted according to device list - continuing..."
+            else
+              echo "❌ Simulator failed to boot properly"
+              exit 1
+            fi
           fi
           
           echo "✅ Simulator is ready!"
