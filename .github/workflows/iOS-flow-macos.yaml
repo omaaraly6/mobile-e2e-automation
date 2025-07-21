@@ -248,8 +248,75 @@ jobs:
               const files = fs.readdirSync('.');
               console.log('Extracted files:', files);
               
-              const ipaFile = files.find(file => file.endsWith('.ipa'));
-              const appBundle = files.find(file => file.endsWith('.app'));
+              let ipaFile = files.find(file => file.endsWith('.ipa'));
+              let appBundle = files.find(file => file.endsWith('.app'));
+              
+              // If no direct IPA/app found, check for nested archives
+              if (!ipaFile && !appBundle) {
+                console.log('🔍 No direct IPA/app found, checking for nested archives...');
+                
+                // Look for tar.gz files that might contain the IPA
+                const tarGzFiles = files.filter(file => file.endsWith('.tar.gz'));
+                console.log(`Found ${tarGzFiles.length} tar.gz files:`, tarGzFiles);
+                
+                for (const tarGzFile of tarGzFiles) {
+                  console.log(`📦 Extracting nested archive: ${tarGzFile}`);
+                  try {
+                    const { execSync } = require('child_process');
+                    execSync(`tar -xzf "${tarGzFile}"`, { stdio: 'inherit' });
+                    
+                    // Check what was extracted
+                    const extractedFiles = fs.readdirSync('.');
+                    console.log('Files after extraction:', extractedFiles);
+                    
+                    // Look for IPA/app files again
+                    ipaFile = extractedFiles.find(file => file.endsWith('.ipa'));
+                    appBundle = extractedFiles.find(file => file.endsWith('.app'));
+                    
+                    if (ipaFile || appBundle) {
+                      console.log(`✅ Found app file in ${tarGzFile}`);
+                      break;
+                    }
+                    
+                    // Also check in subdirectories
+                    for (const file of extractedFiles) {
+                      if (fs.statSync(file).isDirectory()) {
+                        console.log(`🔍 Checking directory: ${file}`);
+                        try {
+                          const dirFiles = fs.readdirSync(file);
+                          console.log(`Files in ${file}:`, dirFiles);
+                          
+                          const nestedIpa = dirFiles.find(f => f.endsWith('.ipa'));
+                          const nestedApp = dirFiles.find(f => f.endsWith('.app'));
+                          
+                          if (nestedIpa) {
+                            const sourcePath = `${file}/${nestedIpa}`;
+                            console.log(`✅ Found IPA in subdirectory: ${sourcePath}`);
+                            // Move to root for easier access
+                            execSync(`mv "${sourcePath}" .`, { stdio: 'inherit' });
+                            ipaFile = nestedIpa;
+                            break;
+                          } else if (nestedApp) {
+                            const sourcePath = `${file}/${nestedApp}`;
+                            console.log(`✅ Found App bundle in subdirectory: ${sourcePath}`);
+                            // Move to root for easier access
+                            execSync(`mv "${sourcePath}" .`, { stdio: 'inherit' });
+                            appBundle = nestedApp;
+                            break;
+                          }
+                        } catch (dirError) {
+                          console.log(`Could not read directory ${file}:`, dirError.message);
+                        }
+                      }
+                    }
+                    
+                    if (ipaFile || appBundle) break;
+                    
+                  } catch (extractError) {
+                    console.log(`Failed to extract ${tarGzFile}:`, extractError.message);
+                  }
+                }
+              }
               
               if (ipaFile) {
                 console.log(`✅ IPA downloaded: ${ipaFile}`);
@@ -260,7 +327,14 @@ jobs:
                 core.setOutput('app-file', appBundle);
                 core.setOutput('app-type', 'app');
               } else {
-                throw new Error('No IPA or App bundle file found in downloaded artifact');
+                console.log('❌ Still no IPA or App bundle found after extracting nested archives');
+                console.log('📁 Final directory listing:');
+                const finalFiles = fs.readdirSync('.');
+                finalFiles.forEach(file => {
+                  const stats = fs.statSync(file);
+                  console.log(`  ${stats.isDirectory() ? 'DIR' : 'FILE'}: ${file}`);
+                });
+                throw new Error('No IPA or App bundle file found in downloaded artifact (checked nested archives)');
               }
               
             } catch (error) {
