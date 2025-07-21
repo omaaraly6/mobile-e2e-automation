@@ -1,4 +1,4 @@
-appId: com.zeal.takosan
+appId: com.zeal.coffeeberry
 name: F&B Apps - Verify member can access QR code successfully
 onFlowStart:
   - runScript: ../pages/homepage.js
