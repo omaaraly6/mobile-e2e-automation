@@ -392,7 +392,22 @@ jobs:
           
           # Wait for simulator to be ready
           echo "⏳ Waiting for simulator to be ready..."
-          timeout 120 bash -c 'until xcrun simctl bootstatus "$1" | grep -q "Boot status: Booted"; do sleep 2; done' -- "$SIMULATOR_UDID"
+          TIMEOUT=120
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            if xcrun simctl bootstatus "$SIMULATOR_UDID" | grep -q "Boot status: Booted"; then
+              echo "✅ Simulator booted successfully!"
+              break
+            fi
+            sleep 2
+            ELAPSED=$((ELAPSED + 2))
+            echo "⏳ Waiting... (${ELAPSED}s/${TIMEOUT}s)"
+          done
+          
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo "❌ Simulator failed to boot within ${TIMEOUT} seconds"
+            exit 1
+          fi
           
           echo "✅ Simulator is ready!"
           xcrun simctl bootstatus "$SIMULATOR_UDID"
@@ -403,12 +418,31 @@ jobs:
           #!/bin/bash
           set -e
           
-          # Function to run commands with timeout
+          # Function to run commands with timeout (macOS compatible)
           run_with_timeout() {
-            timeout "$1" "${@:2}" || {
-              echo "❌ Command timed out after $1 seconds: ${@:2}"
-              return 1
-            }
+            local timeout_duration=$1
+            shift
+            
+            # Start the command in background
+            "$@" &
+            local cmd_pid=$!
+            
+            # Wait for the specified timeout
+            local elapsed=0
+            while [ $elapsed -lt $timeout_duration ]; do
+              if ! kill -0 $cmd_pid 2>/dev/null; then
+                # Process finished
+                wait $cmd_pid
+                return $?
+              fi
+              sleep 1
+              elapsed=$((elapsed + 1))
+            done
+            
+            # Timeout reached, kill the process
+            echo "❌ Command timed out after $timeout_duration seconds: $*"
+            kill $cmd_pid 2>/dev/null
+            return 1
           }
           
           echo "🔍 Looking for iOS app file..."
