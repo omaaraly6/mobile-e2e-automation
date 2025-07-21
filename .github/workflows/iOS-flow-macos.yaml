@@ -1,18 +1,60 @@
-name: Run Maestro Flows on iOS (macOS runner)
+name: Maestro iOS Test on macOS
 
 on:
-  # push:
-  #   branches:
-  #     - test
   workflow_dispatch:
+    inputs:
+      ipa_artifact_name:
+        description: 'Name of the IPA artifact to download'
+        required: true
+        default: 'ios-pr-build-coffeeberry-112'
+      source_repo:
+        description: 'Source repository (owner/repo)'
+        required: true
+        default: 'zeal-io/white-label-apps'
+      source_run_id:
+        description: 'Source workflow run ID'
+        required: true
+        default: '16123259003'
+      project_name:
+        description: 'Project name'
+        required: true
+        default: 'coffeeberry'
+      pr_number:
+        description: 'PR number'
+        required: true
+        default: '796'
+      simulator_device:
+        description: 'iOS Simulator device to use'
+        required: false
+        default: 'iPhone 15'
 
 jobs:
-  maestro-test-ios:
+  test:
     runs-on: macos-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+          
+      - name: Check System Capabilities
+        run: |
+          echo "🔍 Checking macOS runner capabilities..."
+          echo "macOS version:"
+          sw_vers
+          echo "CPU info:"
+          sysctl -n machdep.cpu.brand_string
+          echo "CPU core count: $(sysctl -n hw.ncpu)"
+          echo "Memory info:"
+          sysctl -n hw.memsize | awk '{print $1/1024/1024/1024 " GB"}'
+          echo "Available space:"
+          df -h
+          echo "Xcode version:"
+          xcodebuild -version
+          echo "Available simulators:"
+          xcrun simctl list devices available
 
       - name: Install Homebrew
         run: |
@@ -25,20 +67,483 @@ jobs:
         run: |
           brew tap mobile-dev-inc/tap
           brew install maestro
-
-      - name: Start iOS Simulator
-        run: xcrun simctl boot "iPhone 15"
+          
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
-
-
-      - name: Download iOS App for Simulator
+      
+      - name: Debug Input Parameters
         run: |
-          curl -L -o ChallazTopfade.tar.gz "https://expo.dev/artifacts/eas/4iAHbRbn6mYJtzgR8otThu.tar.gz"
-          tar -xvzf ChallazTopfade.tar.gz
+          echo "🔍 Debug Input Parameters:"
+          echo "ipa_artifact_name: ${{ github.event.inputs.ipa_artifact_name }}"
+          echo "source_repo: ${{ github.event.inputs.source_repo }}"
+          echo "source_run_id: ${{ github.event.inputs.source_run_id }}"
+          echo "project_name: ${{ github.event.inputs.project_name }}"
+          echo "pr_number: ${{ github.event.inputs.pr_number }}"
+          echo "simulator_device: ${{ github.event.inputs.simulator_device }}"
+      
+      - name: Download IPA from source repository
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CROSS_REPO_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              console.log('📥 Downloading IPA artifact from source repository...');
+              
+              // Check which token we're using
+              const hasCrossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}' !== '';
+              console.log('🔍 Token check - CROSS_REPO_TOKEN exists:', hasCrossRepoToken);
+              if (!hasCrossRepoToken) {
+                console.log('⚠️  No CROSS_REPO_TOKEN found - using GITHUB_TOKEN (may not work for cross-repo access)');
+              } else {
+                console.log('✅ Using CROSS_REPO_TOKEN for cross-repository access');
+              }
+              
+              // Test token permissions
+              console.log('🔍 Testing token permissions...');
+              try {
+                const { data: user } = await github.rest.users.getAuthenticated();
+                console.log(`✅ Token authenticated as: ${user.login}`);
+                
+                // Test access to source repository
+                const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
+                const { data: sourceRepo } = await github.rest.repos.get({
+                  owner: owner,
+                  repo: repo
+                });
+                console.log(`✅ Token has access to source repository: ${sourceRepo.full_name}`);
+                
+              } catch (permError) {
+                console.error('❌ Token permission test failed:', permError.message);
+                console.error('This indicates the token does not have the required permissions');
+              }
+              
+              // Get the artifact details from the source repository
+              const [owner, repo] = '${{ github.event.inputs.source_repo }}'.split('/');
+              const runId = '${{ github.event.inputs.source_run_id }}';
+              const artifactName = '${{ github.event.inputs.ipa_artifact_name }}';
+              
+              console.log(`Source: ${owner}/${repo}, Run: ${runId}, Artifact: ${artifactName}`);
+              
+              // First, verify the workflow run exists
+              try {
+                const { data: workflowRun } = await github.rest.actions.getWorkflowRun({
+                  owner: owner,
+                  repo: repo,
+                  run_id: runId
+                });
+                console.log(`✅ Workflow run found: #${workflowRun.id} (${workflowRun.status})`);
+                console.log(`Created: ${workflowRun.created_at}`);
+                console.log(`Updated: ${workflowRun.updated_at}`);
+              } catch (runError) {
+                console.error(`❌ Workflow run ${runId} not found:`, runError.message);
+                throw new Error(`Workflow run ${runId} not found in ${owner}/${repo}`);
+              }
+              
+              // List all artifacts in the workflow run
+              console.log('🔍 Listing all artifacts in the workflow run...');
+              const { data: artifacts } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: owner,
+                repo: repo,
+                run_id: runId
+              });
+              
+              console.log(`Found ${artifacts.artifacts.length} artifacts:`);
+              artifacts.artifacts.forEach(artifact => {
+                console.log(`- ${artifact.name} (ID: ${artifact.id}, Size: ${artifact.size_in_bytes} bytes, Created: ${artifact.created_at})`);
+              });
+              
+              // Find the target artifact
+              const targetArtifact = artifacts.artifacts.find(artifact => 
+                artifact.name === artifactName
+              );
+              
+              if (!targetArtifact) {
+                console.error(`❌ Artifact '${artifactName}' not found in run ${runId}`);
+                console.error('Available artifacts:');
+                artifacts.artifacts.forEach(artifact => {
+                  console.error(`  - ${artifact.name}`);
+                });
+                throw new Error(`Artifact '${artifactName}' not found in run ${runId}. Available: ${artifacts.artifacts.map(a => a.name).join(', ')}`);
+              }
+              
+              console.log(`✅ Found artifact: ${targetArtifact.name} (ID: ${targetArtifact.id})`);
+              
+              // Download the artifact using GitHub API directly
+              console.log('📥 Downloading artifact using GitHub API...');
+              
+              const fs = require('fs');
+              const https = require('https');
+              
+              try {
+                // Use the GitHub API to get the download URL
+                const { data: artifactData } = await github.rest.actions.downloadArtifact({
+                  owner: owner,
+                  repo: repo,
+                  artifact_id: targetArtifact.id,
+                  archive_format: 'zip'
+                });
+                
+                console.log('✅ GitHub API download successful!');
+                console.log(`Downloaded ${artifactData.byteLength} bytes`);
+                
+                // Write the binary data to a file
+                fs.writeFileSync('artifact.zip', Buffer.from(artifactData));
+                
+                // Check what we downloaded
+                const stats = fs.statSync('artifact.zip');
+                console.log(`Downloaded file size: ${stats.size} bytes`);
+                
+                if (stats.size < 1000) {
+                  // File is too small, likely an error response
+                  const content = fs.readFileSync('artifact.zip', 'utf8');
+                  console.log('Downloaded content (likely error):', content);
+                  throw new Error(`Download failed - got error response: ${content}`);
+                }
+                
+                // Extract the zip file
+                console.log('Extracting artifact...');
+                const { execSync } = require('child_process');
+                execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                execSync('rm artifact.zip', { stdio: 'inherit' });
+                
+              } catch (apiError) {
+                console.error('❌ GitHub API download failed:', apiError.message);
+                
+                // Fallback: try with curl using the CROSS_REPO_TOKEN directly
+                console.log('🔄 Trying curl fallback with direct token...');
+                
+                try {
+                  const { execSync } = require('child_process');
+                  
+                  // Get the token from the secret directly
+                  const crossRepoToken = '${{ secrets.CROSS_REPO_TOKEN }}';
+                  console.log(`Using CROSS_REPO_TOKEN: ${crossRepoToken ? crossRepoToken.substring(0, 8) + '...' : 'undefined'}`);
+                  
+                  const downloadUrl = `https://api.github.com/repos/${owner}/${repo}/actions/artifacts/${targetArtifact.id}/zip`;
+                  const curlCommand = `curl -L -H "Authorization: Bearer ${crossRepoToken}" -H "Accept: application/vnd.github.v3+json" -H "User-Agent: GitHub-Actions" "${downloadUrl}" -o artifact.zip`;
+                  
+                  console.log('Executing curl command with direct token...');
+                  execSync(curlCommand, { stdio: 'inherit' });
+                  
+                  const stats = fs.statSync('artifact.zip');
+                  console.log(`Fallback download size: ${stats.size} bytes`);
+                  
+                  if (stats.size < 1000) {
+                    const content = fs.readFileSync('artifact.zip', 'utf8');
+                    console.log('Fallback content:', content);
+                    throw new Error(`Fallback download also failed: ${content}`);
+                  }
+                  
+                  console.log('Extracting artifact...');
+                  execSync('unzip -o artifact.zip', { stdio: 'inherit' });
+                  execSync('rm artifact.zip', { stdio: 'inherit' });
+                  
+                } catch (fallbackError) {
+                  console.error('❌ All download methods failed:', fallbackError.message);
+                  throw new Error(`Failed to download artifact after multiple attempts: ${fallbackError.message}`);
+                }
+              }
+              
+              // Find the IPA file or app bundle
+              const files = fs.readdirSync('.');
+              console.log('Extracted files:', files);
+              
+              const ipaFile = files.find(file => file.endsWith('.ipa'));
+              const appBundle = files.find(file => file.endsWith('.app'));
+              
+              if (ipaFile) {
+                console.log(`✅ IPA downloaded: ${ipaFile}`);
+                core.setOutput('app-file', ipaFile);
+                core.setOutput('app-type', 'ipa');
+              } else if (appBundle) {
+                console.log(`✅ App bundle downloaded: ${appBundle}`);
+                core.setOutput('app-file', appBundle);
+                core.setOutput('app-type', 'app');
+              } else {
+                throw new Error('No IPA or App bundle file found in downloaded artifact');
+              }
+              
+            } catch (error) {
+              console.error('❌ Failed to download IPA:', error.message);
+              console.error('Error details:', error);
+              
+              // Provide helpful debugging information
+              console.log('');
+              console.log('🔧 Debugging Tips:');
+              console.log('1. Check if the source workflow run exists and completed successfully');
+              console.log('2. Verify the artifact name matches exactly');
+              console.log('3. Ensure the artifact hasn\'t expired (artifacts are deleted after 90 days)');
+              console.log('4. Check if the source repository is accessible');
+              console.log('');
+              console.log('📋 Manual IPA Download Instructions:');
+              console.log('1. Go to the source workflow run');
+              console.log('2. Download the IPA artifact manually');
+              console.log('3. Upload it to this workflow run');
+              
+              throw error;
+            }
 
-      - name: Install iOS App
-        run: xcrun simctl install "iPhone 15" ChallazTopfade.app
+      - name: Setup iOS Simulator
+        run: |
+          echo "🔍 Setting up iOS Simulator..."
+          
+          # Get the simulator device name
+          SIMULATOR_DEVICE="${{ github.event.inputs.simulator_device }}"
+          echo "📱 Target simulator: $SIMULATOR_DEVICE"
+          
+          # List available simulators
+          echo "📋 Available simulators:"
+          xcrun simctl list devices available
+          
+          # Find the simulator UDID
+          SIMULATOR_UDID=$(xcrun simctl list devices available | grep "$SIMULATOR_DEVICE" | head -1 | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
+          
+          if [ -z "$SIMULATOR_UDID" ]; then
+            echo "❌ Simulator '$SIMULATOR_DEVICE' not found!"
+            echo "📋 Available devices:"
+            xcrun simctl list devices available | grep -E '^\s*iPhone|^\s*iPad'
+            exit 1
+          fi
+          
+          echo "✅ Found simulator UDID: $SIMULATOR_UDID"
+          echo "SIMULATOR_UDID=$SIMULATOR_UDID" >> $GITHUB_ENV
+          
+          # Shutdown any running simulators
+          echo "🔄 Shutting down existing simulators..."
+          xcrun simctl shutdown all
+          
+          # Boot the target simulator
+          echo "🚀 Booting simulator..."
+          xcrun simctl boot "$SIMULATOR_UDID"
+          
+          # Wait for simulator to be ready
+          echo "⏳ Waiting for simulator to be ready..."
+          timeout 120 bash -c 'until xcrun simctl bootstatus "$1" | grep -q "Boot status: Booted"; do sleep 2; done' -- "$SIMULATOR_UDID"
+          
+          echo "✅ Simulator is ready!"
+          xcrun simctl bootstatus "$SIMULATOR_UDID"
+
+      - name: Create test script
+        run: |
+          cat > test_script.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          # Function to run commands with timeout
+          run_with_timeout() {
+            timeout "$1" "${@:2}" || {
+              echo "❌ Command timed out after $1 seconds: ${@:2}"
+              return 1
+            }
+          }
+          
+          echo "🔍 Looking for iOS app file..."
+          IPA_FILE=$(find . -name "*.ipa" | head -1)
+          APP_BUNDLE=$(find . -name "*.app" | head -1)
+          
+          if [ -n "$IPA_FILE" ]; then
+            APP_FILE="$IPA_FILE"
+            APP_TYPE="ipa"
+          elif [ -n "$APP_BUNDLE" ]; then
+            APP_FILE="$APP_BUNDLE"
+            APP_TYPE="app"
+          else
+            echo "❌ No iOS app file found!"
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          
+          echo "📱 Installing iOS app: $APP_FILE (type: $APP_TYPE)"
+          
+          # Validate app file
+          APP_SIZE=$(ls -lh "$APP_FILE" | awk '{print $5}')
+          echo "📊 App file size: $APP_SIZE"
+          
+          # Check if file is too small (likely corrupted)
+          APP_BYTES=$(stat -f%z "$APP_FILE")
+          if [ "$APP_BYTES" -lt 1000000 ]; then
+            echo "⚠️  WARNING: App file is very small (${APP_SIZE}) - may be corrupted"
+          fi
+          
+          # Check file type
+          FILE_TYPE=$(file "$APP_FILE")
+          echo "📋 File type: $FILE_TYPE"
+          
+          # Check simulator status
+          echo "🔍 Checking simulator status..."
+          if [ -n "$SIMULATOR_UDID" ]; then
+            echo "📱 Simulator UDID: $SIMULATOR_UDID"
+            xcrun simctl bootstatus "$SIMULATOR_UDID"
+          else
+            echo "❌ No simulator UDID found!"
+            exit 1
+          fi
+          
+          # Uninstall any previous version first
+          echo "🗑️ Uninstalling previous version..."
+          xcrun simctl uninstall "$SIMULATOR_UDID" com.zeal.coffeeberry || echo "No previous installation found"
+          
+          # Install app
+          echo "📦 Installing app (this may take a few minutes)..."
+          INSTALL_START=$(date +%s)
+          
+          if run_with_timeout 300 xcrun simctl install "$SIMULATOR_UDID" "$APP_FILE"; then
+            INSTALL_END=$(date +%s)
+            INSTALL_TIME=$((INSTALL_END - INSTALL_START))
+            echo "✅ App installed successfully in ${INSTALL_TIME} seconds"
+          else
+            echo "❌ App installation failed!"
+            echo "📋 Checking simulator status..."
+            xcrun simctl bootstatus "$SIMULATOR_UDID"
+            exit 1
+          fi
+          
+          # Verify installation
+          echo "🔍 Checking if app was installed..."
+          sleep 2
+          
+          INSTALLED_APPS=$(xcrun simctl listapps "$SIMULATOR_UDID" | grep -i coffeeberry || echo "")
+          if [ -n "$INSTALLED_APPS" ]; then
+            echo "✅ App found: $INSTALLED_APPS"
+          else
+            echo "❌ App not found after installation!"
+            echo "📋 All installed apps:"
+            xcrun simctl listapps "$SIMULATOR_UDID" | head -20
+            exit 1
+          fi
+          
+          # Launch the app to verify it works
+          echo "🚀 Testing app launch..."
+          xcrun simctl launch "$SIMULATOR_UDID" com.zeal.coffeeberry || echo "⚠️  App launch test failed (this might be normal)"
+          
+          # Grant permissions that might be needed
+          echo "🔐 Granting permissions..."
+          xcrun simctl privacy "$SIMULATOR_UDID" grant location com.zeal.coffeeberry || echo "Location permission failed"
+          xcrun simctl privacy "$SIMULATOR_UDID" grant camera com.zeal.coffeeberry || echo "Camera permission failed"
+          xcrun simctl privacy "$SIMULATOR_UDID" grant photos com.zeal.coffeeberry || echo "Photos permission failed"
+          
+          echo "📋 Checking available flows..."
+          echo "📁 Current directory structure:"
+          ls -la
+          echo "📁 iOS directory structure:"
+          ls -la ios/
+          echo "📁 Ordering apps directory:"
+          ls -la ios/ordering_apps/
+          echo "📋 Config file contents:"
+          cat ios/ordering_apps/config.yaml
+          echo "📋 Available test files:"
+          find ios/ordering_apps/ -name "*.yaml" -type f
+          
+          echo "🧪 Running Maestro ordering app flows..."
+          echo "📍 Running from current directory: $(pwd)"
+          
+          # Change to the ordering_apps directory for proper relative paths
+          cd ios/ordering_apps/
+          echo "📍 Now in directory: $(pwd)"
+          echo "📋 Files in current directory:"
+          ls -la
+          
+          # Try with config file first (using relative paths)
+          if maestro test . --config config.yaml; then
+            echo "✅ Tests completed successfully with config"
+          else
+            echo "⚠️  Config-based execution failed, trying without config..."
+            if maestro test .; then
+              echo "✅ Tests completed successfully without config"
+            else
+              echo "❌ Directory-based execution failed, trying individual flows..."
+              echo "📋 Running individual flows:"
+              
+              # Run flows in the order specified in config
+              for flow in login/login.yaml pickup_ordering/pickupordering.yaml pickup_ordering/cancelorder.yaml delivery_ordering/deliveryordering.yaml delivery_ordering/cancelorder.yaml login/logout.yaml; do
+                if [ -f "$flow" ]; then
+                  echo "🧪 Running flow: $flow"
+                  maestro test "$flow" || echo "❌ Flow failed: $flow"
+                else
+                  echo "⚠️  Flow not found: $flow"
+                fi
+              done
+            fi
+          fi
+          EOF
+          chmod +x test_script.sh
+
+      - name: Run Maestro Tests
+        run: ./test_script.sh
+        timeout-minutes: 25
         
-      - name: Run Maestro Flow
-        run: maestro test ios/
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-test-reports-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/*
+            **/test-results/**
+            **/maestro-results/**
+          retention-days: 30
+          
+      - name: Upload Debug Artifacts (Screenshots & Logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-debug-artifacts-${{ github.run_number }}
+          path: |
+            ~/.maestro/tests/**/screenshots/**
+            ~/.maestro/tests/**/logs/**
+            ~/.maestro/tests/**/*.png
+            ~/.maestro/tests/**/*.jpg
+            ~/.maestro/tests/**/*.log
+            ~/.maestro/tests/**/*.xml
+            ~/.maestro/tests/**/*.json
+          retention-days: 30
+          
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          echo "# 🧪 Maestro iOS Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Execution Overview" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow Run**: #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **IPA**: ${{ github.event.inputs.ipa_artifact_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project**: ${{ github.event.inputs.project_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Simulator**: ${{ github.event.inputs.simulator_device }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 🗂️ Debug Artifacts Available" >> $GITHUB_STEP_SUMMARY
+          echo "The following debug artifacts have been uploaded:" >> $GITHUB_STEP_SUMMARY
+          echo "- 📱 **Screenshots**: UI state at each test step" >> $GITHUB_STEP_SUMMARY
+          echo "- 📋 **Logs**: Detailed execution logs" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔍 **Test Reports**: Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 **UI Hierarchy**: Element structure for debugging" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count debug directories
+          DEBUG_DIRS=$(find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | wc -l)
+          echo "## 📁 Debug Output Locations" >> $GITHUB_STEP_SUMMARY
+          echo "Found **$DEBUG_DIRS** test execution(s) with debug output:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # List debug directories with details
+          if [ "$DEBUG_DIRS" -gt 0 ]; then
+            find ~/.maestro/tests -type d -name "*2025*" 2>/dev/null | while read dir; do
+              TEST_NAME=$(basename "$(dirname "$dir")" 2>/dev/null || echo "Unknown")
+              TIMESTAMP=$(basename "$dir")
+              SCREENSHOT_COUNT=$(find "$dir" -name "*.png" 2>/dev/null | wc -l)
+              echo "### 🧪 Test: $TEST_NAME" >> $GITHUB_STEP_SUMMARY
+              echo "- **Timestamp**: $TIMESTAMP" >> $GITHUB_STEP_SUMMARY
+              echo "- **Screenshots**: $SCREENSHOT_COUNT files" >> $GITHUB_STEP_SUMMARY
+              echo "- **Path**: \`$dir\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          
+          echo "## 🔗 How to Access Debug Files" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to the **Actions** tab of this repository" >> $GITHUB_STEP_SUMMARY
+          echo "2. Click on this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "3. Scroll down to **Artifacts** section" >> $GITHUB_STEP_SUMMARY
+          echo "4. Download the artifacts you need:" >> $GITHUB_STEP_SUMMARY
+          echo "   - 📊 \`maestro-ios-test-reports-${{ github.run_number }}\` - Complete test results" >> $GITHUB_STEP_SUMMARY
+          echo "   - 🖼️ \`maestro-ios-debug-artifacts-${{ github.run_number }}\` - Screenshots & logs" >> $GITHUB_STEP_SUMMARY
