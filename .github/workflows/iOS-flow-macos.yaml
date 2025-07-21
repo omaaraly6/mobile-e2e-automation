@@ -26,7 +26,7 @@ on:
       simulator_device:
         description: 'iOS Simulator device to use'
         required: false
-        default: 'iPhone 15'
+        default: 'iPhone 16'
 
 jobs:
   test:
@@ -388,14 +388,33 @@ jobs:
           echo "📋 Available simulators:"
           xcrun simctl list devices available
           
-          # Find the simulator UDID
+          # Find the simulator UDID with fallback options
           SIMULATOR_UDID=$(xcrun simctl list devices available | grep "$SIMULATOR_DEVICE" | head -1 | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
           
           if [ -z "$SIMULATOR_UDID" ]; then
-            echo "❌ Simulator '$SIMULATOR_DEVICE' not found!"
-            echo "📋 Available devices:"
-            xcrun simctl list devices available | grep -E '^\s*iPhone|^\s*iPad'
-            exit 1
+            echo "⚠️  Simulator '$SIMULATOR_DEVICE' not found! Trying fallback options..."
+            
+            # Try fallback devices in order of preference
+            FALLBACK_DEVICES=("iPhone 16" "iPhone 16 Pro" "iPhone 15" "iPhone 15 Pro" "iPhone SE (3rd generation)")
+            
+            for FALLBACK_DEVICE in "${FALLBACK_DEVICES[@]}"; do
+              echo "🔍 Trying fallback: $FALLBACK_DEVICE"
+              SIMULATOR_UDID=$(xcrun simctl list devices available | grep "$FALLBACK_DEVICE" | head -1 | grep -oE '\([A-F0-9-]{36}\)' | tr -d '()')
+              if [ -n "$SIMULATOR_UDID" ]; then
+                echo "✅ Found fallback simulator: $FALLBACK_DEVICE"
+                SIMULATOR_DEVICE="$FALLBACK_DEVICE"
+                break
+              fi
+            done
+            
+            if [ -z "$SIMULATOR_UDID" ]; then
+              echo "❌ No suitable iOS simulator found!"
+              echo "📋 Available iPhone devices:"
+              xcrun simctl list devices available | grep -E '^\s*iPhone'
+              echo "📋 Available iPad devices:"
+              xcrun simctl list devices available | grep -E '^\s*iPad'
+              exit 1
+            fi
           fi
           
           echo "✅ Found simulator UDID: $SIMULATOR_UDID"
