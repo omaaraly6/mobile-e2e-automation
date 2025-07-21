@@ -1,0 +1,22 @@
+appId: com.zeal.challaztopfade
+name: Booking Apps - Verify member can cancel a booking
+tags:
+  - booking_apps
+onFlowStart:
+  - runScript: ../pages/navigation.js
+  - runScript: ../pages/activity.js
+#   - runFlow: ../login/login.yaml
+#   - runFlow: ../booking/booking.yaml
+---
+- tapOn:
+    id: ${output.navigation.orderspage}
+- tapOn:
+    text: "Ordered 1 Items"
+    index: 0
+- tapOn:
+    id: ${output.activity.cancelbooking}
+- tapOn:
+    id: ${output.activity.confirmcancellation}
+- assertVisible: 'Cancelled'
+- tapOn:
+    id: ${output.activity.backbtn}

@@ -1,0 +1,33 @@
+appId: com.zeal.coffeeberry
+name: F&B Apps - Verify member can login successfully
+tags:
+  - ordering_apps
+onFlowStart:
+  - runScript: ../pages/loginpage.js
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Coffee Loyalty Card"
+- tapOn: "Getting Started"
+- tapOn:
+    id: ${output.loginpage.CountryCode}
+- waitForAnimationToEnd:
+    timeout: 1000
+- tapOn:
+    id: ${output.loginpage.SearchInput}
+- inputText: "Egypt"
+- tapOn:
+    id:  ${output.loginpage.Egypt}
+    repeat: 2
+- tapOn:
+    id: ${output.loginpage.PhoneNumber}
+- inputText: "01020000002"
+- tapOn: 
+    text: "Continue"
+    repeat: 2
+- waitForAnimationToEnd:
+    timeout: 1000
+- copyTextFrom:
+    id: "otp"
+- pasteText
+- assertVisible: "What would you like to do today?"

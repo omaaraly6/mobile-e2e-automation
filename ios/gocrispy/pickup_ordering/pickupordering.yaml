@@ -1,0 +1,46 @@
+appId: com.zeal.gocrispy
+name: F&B Apps - Verify member can create a pickup order successfully
+tags:
+  - ordering_apps
+onFlowStart:
+  - runScript: ../pages/homepage.js
+  - runScript: ../pages/pickuppages.js
+  - runScript: ../pages/menu.js
+  - runScript: ../pages/checkout.js
+#   - runFlow: ../login/login.yaml
+# tags:
+#   - regressions-ordering-ios
+---
+- setLocation:
+    latitude: 30.049616
+    longitude: 31.469983
+- tapOn:
+    id: ${output.homepage.pickupbtn}
+    optional: false
+- tapOn:
+    id: ${output.pickuppages.skipbtn}
+    optional: true
+- scrollUntilVisible:
+    element:
+        id: ${output.pickuppages.branch}
+- tapOn: 
+    id: ${output.pickuppages.branch}
+- tapOn: 
+    id: ${output.pickuppages.confirm}   
+- tapOn: 
+    id: ${output.menu.category}
+    retryTapIfNoChange: false
+- tapOn: 
+    id: ${output.menu.pickupitem}
+- tapOn: 
+    id: ${output.menu.addtobasketbtn}
+- tapOn: 
+    id: ${output.menu.viewbasket}
+- tapOn: 
+    id: ${output.checkout.checkoutbtn}
+- scrollUntilVisible:
+    element:
+      id: ${output.checkout.placeorderbtn}
+- tapOn: 
+    id: ${output.checkout.placeorderbtn}
+- assertVisible: "Reviewing your order"

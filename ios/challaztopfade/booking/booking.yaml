@@ -1,0 +1,49 @@
+appId: com.zeal.challaztopfade
+name: Booking Apps - Verify member can create a booking successfully
+tags:
+  - booking_apps
+onFlowStart:
+  - runScript: ../pages/homepage.js
+  - runScript: ../pages/bookingpage.js
+#   - runScript: ../pages/activity.js
+#   - runFlow: ../login/login.yaml
+---
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: ${output.homepage.bookappointment}
+    waitToSettleTimeoutMs: 1000
+- tapOn:
+    id: ${output.bookingpage.branch}
+- tapOn: 'continue'
+- tapOn:
+    id: ${output.bookingpage.technician}
+- tapOn: 'continue'
+- tapOn:
+    id: ${output.bookingpage.service}
+- tapOn:
+    point: "50%,92%"
+# - tapOn: 'continue'
+- scrollUntilVisible:
+    element:
+      text: ${output.bookingpage.slot}
+    timeout: 50000
+    optional: false
+    visibilityPercentage: 100
+- tapOn:
+    id: ${output.bookingpage.slot}
+    optional: false
+- tapOn:
+    text: 'continue'
+    optional: false
+- scrollUntilVisible:
+    element:
+      id: ${output.bookingpage.confirmbooking}
+- tapOn:
+    id: ${output.bookingpage.confirmbooking}
+- assertVisible: 'Booking confirmed successfully!'
+- tapOn:
+    id: ${output.bookingpage.donebtn}
+    repeat: 0
+    retryTapIfNoChange: false
+
