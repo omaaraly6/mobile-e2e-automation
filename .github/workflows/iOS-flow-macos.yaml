@@ -58,15 +58,34 @@ jobs:
 
       - name: Install Homebrew
         run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          if command -v brew >/dev/null 2>&1; then
+            echo "✅ Homebrew is already installed"
+            brew --version
+          else
+            echo "📦 Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
 
       - name: Install Facebook IDB
-        run: brew install facebook/fb/idb-companion
+        run: |
+          if command -v idb_companion >/dev/null 2>&1; then
+            echo "✅ Facebook IDB is already installed"
+            idb_companion --version || echo "IDB version check failed (this is normal)"
+          else
+            echo "📦 Installing Facebook IDB..."
+            brew install facebook/fb/idb-companion
+          fi
 
       - name: Install Maestro CLI
         run: |
-          brew tap mobile-dev-inc/tap
-          brew install maestro
+          if command -v maestro >/dev/null 2>&1; then
+            echo "✅ Maestro is already installed"
+            maestro --version
+          else
+            echo "📦 Installing Maestro CLI..."
+            brew tap mobile-dev-inc/tap
+            brew install maestro
+          fi
           
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
