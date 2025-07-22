@@ -802,37 +802,82 @@ jobs:
           EOF
           chmod +x test_script.sh
 
-      - name: Run Maestro Tests with Testmo Integration
+      - name: Run Maestro Tests
         run: |
           echo "🚀 Running Maestro tests..."
           
-          if [ "$TESTMO_ENABLED" = "true" ]; then
-            echo "📊 Testmo integration enabled - submitting results to Testmo"
-            # Run tests and submit results to Testmo
-            # NOTE: Adjust --project-id to match your Testmo project ID
-            testmo automation:run:submit \
-              --instance "$TESTMO_URL" \
-              --project-id 1 \
-              --name "Maestro iOS Tests - ${{ github.event.inputs.project_name }} - PR #${{ github.event.inputs.pr_number }}" \
-              --source "maestro-ios" \
-              --resources resources.json \
-              --results test-results/*.xml \
-              -- ./test_script.sh
+          # Run the test script and capture exit code, but don't fail the step
+          set +e  # Don't exit on error
+          ./test_script.sh
+          TEST_EXIT_CODE=$?
+          set -e  # Re-enable exit on error
+          
+          echo "📊 Test execution completed with exit code: $TEST_EXIT_CODE"
+          
+          # Store the exit code for later steps
+          echo "TEST_EXIT_CODE=$TEST_EXIT_CODE" >> $GITHUB_ENV
+          
+          # Show test results summary
+          if [ -f "test-results/maestro-junit.xml" ]; then
+            echo "✅ Test results generated successfully"
+            echo "📋 Test result files:"
+            ls -la test-results/
           else
-            echo "⚠️  Testmo integration disabled - running tests without Testmo submission"
-            # Just run the tests without Testmo integration
-            ./test_script.sh
-            
-            # Show where results would be available
-            if [ -f "test-results/maestro-junit.xml" ]; then
-              echo "📊 Test results generated: test-results/maestro-junit.xml"
-              echo "💡 To enable Testmo integration, configure TESTMO_URL and TESTMO_TOKEN secrets"
-            fi
+            echo "⚠️  No test results found in test-results/"
           fi
         timeout-minutes: 25
+
+      - name: Submit Results to Testmo
+        if: always() && env.TESTMO_ENABLED == 'true'
+        run: |
+          echo "📊 Submitting test results to Testmo..."
+          
+          # Check if we have test results to submit
+          if [ ! -f "test-results/maestro-junit.xml" ]; then
+            echo "❌ No test results found to submit to Testmo"
+            exit 1
+          fi
+          
+          # Submit results to Testmo regardless of test success/failure
+          # NOTE: Adjust --project-id to match your Testmo project ID
+          testmo automation:run:submit \
+            --instance "$TESTMO_URL" \
+            --project-id 1 \
+            --name "Maestro iOS Tests - ${{ github.event.inputs.project_name }} - PR #${{ github.event.inputs.pr_number }}" \
+            --source "maestro-ios" \
+            --resources resources.json \
+            --results test-results/*.xml
+            
+          echo "✅ Results successfully submitted to Testmo!"
         env:
           TESTMO_URL: ${{ secrets.TESTMO_URL }}
           TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
+
+      - name: Check Test Results
+        if: always()
+        run: |
+          echo "🔍 Final test results check..."
+          
+          if [ "$TESTMO_ENABLED" = "true" ]; then
+            echo "📊 Testmo integration was enabled - results should be available in Testmo"
+          else
+            echo "⚠️  Testmo integration was disabled"
+            echo "💡 To enable Testmo integration, configure TESTMO_URL and TESTMO_TOKEN secrets"
+          fi
+          
+          # Show where results are available
+          if [ -f "test-results/maestro-junit.xml" ]; then
+            echo "📄 JUnit XML results generated: test-results/maestro-junit.xml"
+            echo "📦 Results will be uploaded as GitHub Actions artifacts"
+          fi
+          
+          # Exit with the original test exit code to preserve workflow status
+          if [ -n "$TEST_EXIT_CODE" ] && [ "$TEST_EXIT_CODE" != "0" ]; then
+            echo "❌ Tests failed with exit code $TEST_EXIT_CODE"
+            exit $TEST_EXIT_CODE
+          else
+            echo "✅ All tests passed"
+          fi
           
       - name: Upload JUnit Test Results
         if: always()
