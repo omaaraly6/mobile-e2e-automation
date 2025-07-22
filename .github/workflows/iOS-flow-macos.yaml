@@ -86,9 +86,93 @@ jobs:
             brew tap mobile-dev-inc/tap
             brew install maestro
           fi
+
+      - name: Setup Node.js for Testmo CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Testmo CLI
+        run: |
+          if command -v testmo >/dev/null 2>&1; then
+            echo "✅ Testmo CLI is already installed"
+            testmo --version
+          else
+            echo "📦 Installing Testmo CLI..."
+            npm install -g @testmo/testmo-cli
+          fi
           
       - name: Set Maestro Timeout Environment Variable
         run: echo "MAESTRO_DRIVER_STARTUP_TIMEOUT=1000000" >> $GITHUB_ENV
+
+      # Note: This step requires TESTMO_URL and TESTMO_TOKEN to be configured as repository secrets
+      # TESTMO_URL should be your Testmo instance URL (e.g., https://your-company.testmo.com)
+      # TESTMO_TOKEN should be a valid API token from your Testmo instance
+      # You may also need to adjust the project-id in the test submission step below
+      - name: Setup Testmo Resources
+        run: |
+          echo "🔧 Setting up Testmo resources..."
+          # Add git hash field
+          testmo automation:resources:add-field --name git --type string \
+            --value ${GITHUB_SHA:0:7} --resources resources.json
+          
+          # Add link back to GitHub Actions run
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          testmo automation:resources:add-link --name "GitHub Actions" \
+            --url "$RUN_URL" --resources resources.json
+          
+          # Add source repository link if different
+          if [ "${{ github.event.inputs.source_repo }}" != "${{ github.repository }}" ]; then
+            SOURCE_RUN_URL="https://github.com/${{ github.event.inputs.source_repo }}/actions/runs/${{ github.event.inputs.source_run_id }}"
+            testmo automation:resources:add-link --name "Source Build" \
+              --url "$SOURCE_RUN_URL" --resources resources.json
+          fi
+          
+          # Add PR link if available
+          if [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            PR_URL="https://github.com/${{ github.event.inputs.source_repo }}/pull/${{ github.event.inputs.pr_number }}"
+            testmo automation:resources:add-link --name "Pull Request" \
+              --url "$PR_URL" --resources resources.json
+          fi
+          
+          # Add additional metadata
+          testmo automation:resources:add-field --name "simulator_device" --type string \
+            --value "${{ github.event.inputs.simulator_device }}" --resources resources.json
+          testmo automation:resources:add-field --name "project_name" --type string \
+            --value "${{ github.event.inputs.project_name }}" --resources resources.json
+          testmo automation:resources:add-field --name "ipa_artifact" --type string \
+            --value "${{ github.event.inputs.ipa_artifact_name }}" --resources resources.json
+        env:
+          TESTMO_URL: ${{ secrets.TESTMO_URL }}
+          TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
+
+      - name: Validate Testmo Configuration
+        run: |
+          echo "🔍 Validating Testmo configuration..."
+          
+          if [ -z "$TESTMO_URL" ]; then
+            echo "⚠️  TESTMO_URL is not set. Test results will not be uploaded to Testmo."
+            echo "To enable Testmo integration:"
+            echo "1. Go to your repository Settings > Secrets and variables > Actions"
+            echo "2. Add TESTMO_URL secret with your Testmo instance URL"
+            echo "3. Add TESTMO_TOKEN secret with your API token from Testmo"
+            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+          elif [ -z "$TESTMO_TOKEN" ]; then
+            echo "⚠️  TESTMO_TOKEN is not set. Test results will not be uploaded to Testmo."
+            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+          else
+            echo "✅ Testmo configuration found. Testing connection..."
+            if testmo automation:run:list --instance "$TESTMO_URL" --limit 1 >/dev/null 2>&1; then
+              echo "✅ Testmo connection successful!"
+              echo "TESTMO_ENABLED=true" >> $GITHUB_ENV
+            else
+              echo "❌ Testmo connection failed. Please check your TESTMO_URL and TESTMO_TOKEN."
+              echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+            fi
+          fi
+        env:
+          TESTMO_URL: ${{ secrets.TESTMO_URL }}
+          TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
       
       - name: Debug Input Parameters
         run: |
@@ -616,6 +700,9 @@ jobs:
           echo "📋 Available test files:"
           find ios/ordering_apps/ -name "*.yaml" -type f
           
+          # Create directory for test results
+          mkdir -p test-results
+          
           echo "🧪 Running Maestro ordering app flows..."
           echo "📍 Running from current directory: $(pwd)"
           
@@ -625,35 +712,138 @@ jobs:
           echo "📋 Files in current directory:"
           ls -la
           
+          # Set exit status tracking
+          OVERALL_EXIT_CODE=0
+          
           # Try with config file first (using relative paths)
-          if maestro test . --config config.yaml; then
+          if maestro test . --config config.yaml --format junit --output ../../test-results/maestro-junit.xml; then
             echo "✅ Tests completed successfully with config"
           else
             echo "⚠️  Config-based execution failed, trying without config..."
-            if maestro test .; then
+            # If config fails, try without it but still generate JUnit output
+            if maestro test . --format junit --output ../../test-results/maestro-junit.xml; then
               echo "✅ Tests completed successfully without config"
             else
               echo "❌ Directory-based execution failed, trying individual flows..."
               echo "📋 Running individual flows:"
               
+              # Initialize JUnit XML for individual flows
+              cat > ../../test-results/maestro-junit.xml << 'JUNIT_EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="Maestro iOS Tests" tests="0" failures="0" errors="0" time="0">
+          JUNIT_EOF
+              
+              TEST_COUNT=0
+              FAILURE_COUNT=0
+              TOTAL_TIME=0
+              
               # Run flows in the order specified in config
               for flow in login/login.yaml pickup_ordering/pickupordering.yaml pickup_ordering/cancelorder.yaml delivery_ordering/deliveryordering.yaml delivery_ordering/cancelorder.yaml login/logout.yaml; do
                 if [ -f "$flow" ]; then
                   echo "🧪 Running flow: $flow"
-                  maestro test "$flow" || echo "❌ Flow failed: $flow"
+                  TEST_START=$(date +%s)
+                  
+                  if maestro test "$flow" --format junit --output "../../test-results/$(basename "$flow" .yaml)-junit.xml"; then
+                    echo "✅ Flow passed: $flow"
+                  else
+                    echo "❌ Flow failed: $flow"
+                    FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                    OVERALL_EXIT_CODE=1
+                  fi
+                  
+                  TEST_END=$(date +%s)
+                  TEST_TIME=$((TEST_END - TEST_START))
+                  TOTAL_TIME=$((TOTAL_TIME + TEST_TIME))
+                  TEST_COUNT=$((TEST_COUNT + 1))
                 else
                   echo "⚠️  Flow not found: $flow"
+                  FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                  OVERALL_EXIT_CODE=1
                 fi
               done
+              
+              # Update the summary in JUnit XML
+              sed -i '' "s/tests=\"0\"/tests=\"$TEST_COUNT\"/" ../../test-results/maestro-junit.xml
+              sed -i '' "s/failures=\"0\"/failures=\"$FAILURE_COUNT\"/" ../../test-results/maestro-junit.xml
+              sed -i '' "s/time=\"0\"/time=\"$TOTAL_TIME\"/" ../../test-results/maestro-junit.xml
+              echo "</testsuites>" >> ../../test-results/maestro-junit.xml
             fi
           fi
+          
+          # Return to original directory
+          cd ../../
+          
+          # Ensure we have test results
+          if [ ! -f "test-results/maestro-junit.xml" ]; then
+            echo "⚠️  No JUnit XML found, creating basic results file..."
+            mkdir -p test-results
+            cat > test-results/maestro-junit.xml << 'JUNIT_EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <testsuites name="Maestro iOS Tests" tests="1" failures="1" errors="0" time="0">
+            <testsuite name="MaestroTests" tests="1" failures="1" errors="0" time="0">
+              <testcase name="TestExecution" classname="MaestroTests" time="0">
+                <failure message="No test results generated">Test execution did not produce valid results</failure>
+              </testcase>
+            </testsuite>
+          </testsuites>
+          JUNIT_EOF
+          fi
+          
+          echo "📊 Test results summary:"
+          echo "📁 Test results directory:"
+          ls -la test-results/
+          
+          if [ -f "test-results/maestro-junit.xml" ]; then
+            echo "📋 JUnit XML content preview:"
+            head -20 test-results/maestro-junit.xml
+          fi
+          
+          exit $OVERALL_EXIT_CODE
           EOF
           chmod +x test_script.sh
 
-      - name: Run Maestro Tests
-        run: ./test_script.sh
+      - name: Run Maestro Tests with Testmo Integration
+        run: |
+          echo "🚀 Running Maestro tests..."
+          
+          if [ "$TESTMO_ENABLED" = "true" ]; then
+            echo "📊 Testmo integration enabled - submitting results to Testmo"
+            # Run tests and submit results to Testmo
+            # NOTE: Adjust --project-id to match your Testmo project ID
+            testmo automation:run:submit \
+              --instance "$TESTMO_URL" \
+              --project-id 1 \
+              --name "Maestro iOS Tests - ${{ github.event.inputs.project_name }} - PR #${{ github.event.inputs.pr_number }}" \
+              --source "maestro-ios" \
+              --resources resources.json \
+              --results test-results/*.xml \
+              -- ./test_script.sh
+          else
+            echo "⚠️  Testmo integration disabled - running tests without Testmo submission"
+            # Just run the tests without Testmo integration
+            ./test_script.sh
+            
+            # Show where results would be available
+            if [ -f "test-results/maestro-junit.xml" ]; then
+              echo "📊 Test results generated: test-results/maestro-junit.xml"
+              echo "💡 To enable Testmo integration, configure TESTMO_URL and TESTMO_TOKEN secrets"
+            fi
+          fi
         timeout-minutes: 25
-        
+        env:
+          TESTMO_URL: ${{ secrets.TESTMO_URL }}
+          TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
+          
+      - name: Upload JUnit Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-ios-junit-results-${{ github.run_number }}
+          path: |
+            test-results/*.xml
+            test-results/**/*.xml
+          retention-days: 30
+
       - name: Upload Test Reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -691,6 +881,13 @@ jobs:
           echo "- **Project**: ${{ github.event.inputs.project_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **PR**: #${{ github.event.inputs.pr_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Simulator**: ${{ github.event.inputs.simulator_device }}" >> $GITHUB_STEP_SUMMARY
+          
+          # Add Testmo integration status
+          if [ "$TESTMO_ENABLED" = "true" ]; then
+            echo "- **Testmo Integration**: ✅ Enabled - Results submitted to Testmo" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Testmo Integration**: ⚠️ Disabled - Configure TESTMO_URL and TESTMO_TOKEN secrets to enable" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           
           echo "## 🗂️ Debug Artifacts Available" >> $GITHUB_STEP_SUMMARY
