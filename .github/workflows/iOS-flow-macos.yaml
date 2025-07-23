@@ -222,38 +222,39 @@ jobs:
           echo "✅ Step 3 PASSED: Testmo CLI found at $(which testmo)"
           echo "📋 Testmo version: $(testmo --version 2>/dev/null || echo 'Version check failed')"
           
-                     # Step 4: Test connection
-           echo "🔍 Step 4: Testing connection..."
-           echo "🌐 Testing connection to: $TESTMO_URL"
+                     # Step 4: Verify CLI commands exist
+           echo "🔍 Step 4: Verifying Testmo CLI commands..."
+           
+           # Check what commands are available
+           echo "🔍 Available Testmo commands:"
+           testmo --help | head -10 || echo "Could not get help"
+           echo ""
            
            # Disable exit on error for this test
            set +e
            
-           # Capture both stdout and stderr
-           CONNECTION_OUTPUT=$(testmo automation:run:list --instance "$TESTMO_URL" --limit 1 2>&1)
-           CONNECTION_EXIT_CODE=$?
+           # Test if the automation:run:submit command exists (the one we'll actually use)
+           SUBMIT_HELP=$(testmo automation:run:submit --help 2>&1)
+           SUBMIT_EXIT_CODE=$?
            
            # Re-enable exit on error
            set -e
            
-           if [ $CONNECTION_EXIT_CODE -eq 0 ]; then
-             echo "✅ Step 4 PASSED: Testmo connection successful!"
-             echo "📋 Connection test output:"
-             echo "$CONNECTION_OUTPUT"
+           if [ $SUBMIT_EXIT_CODE -eq 0 ]; then
+             echo "✅ Step 4 PASSED: Required Testmo commands are available"
+             echo "📋 automation:run:submit command is ready"
              echo ""
              echo "✅ ALL STEPS PASSED - Enabling Testmo integration"
+             echo "💡 Connection and authentication will be tested during actual submission"
              echo "TESTMO_ENABLED=true" >> $GITHUB_ENV
            else
-             echo "❌ Step 4 FAILED: Testmo connection failed (exit code: $CONNECTION_EXIT_CODE)"
-             echo "🔍 Connection error output:"
-             echo "$CONNECTION_OUTPUT"
+             echo "❌ Step 4 FAILED: Required Testmo commands not available"
+             echo "🔍 Command test output:"
+             echo "$SUBMIT_HELP"
              echo ""
-             echo "🔍 Possible issues:"
-             echo "  - TESTMO_URL might be incorrect (check format: https://your-instance.testmo.com)"
-             echo "  - TESTMO_TOKEN might be invalid or expired"
-             echo "  - Network connectivity issues"
-             echo "  - Testmo instance might be down"
-             echo "  - Project permissions (token might not have access)"
+             echo "🔍 This might be due to:"
+             echo "  - Incompatible Testmo CLI version"
+             echo "  - Installation issues"
              echo ""
              echo "❌ VALIDATION FAILED - Disabling Testmo integration"
              echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
