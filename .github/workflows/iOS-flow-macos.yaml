@@ -150,6 +150,23 @@ jobs:
         run: |
           echo "🔍 Validating Testmo configuration..."
           
+          # Debug: Show if variables are set (but not their values for security)
+          echo "🔍 Environment variable check:"
+          if [ -n "$TESTMO_URL" ]; then
+            echo "✅ TESTMO_URL is set (${#TESTMO_URL} characters)"
+            echo "🔗 URL starts with: $(echo "$TESTMO_URL" | cut -c1-20)..."
+          else
+            echo "❌ TESTMO_URL is not set"
+          fi
+          
+          if [ -n "$TESTMO_TOKEN" ]; then
+            echo "✅ TESTMO_TOKEN is set (${#TESTMO_TOKEN} characters)"
+            echo "🔑 Token starts with: $(echo "$TESTMO_TOKEN" | cut -c1-8)..."
+          else
+            echo "❌ TESTMO_TOKEN is not set"
+          fi
+          
+          # Validate configuration
           if [ -z "$TESTMO_URL" ]; then
             echo "⚠️  TESTMO_URL is not set. Test results will not be uploaded to Testmo."
             echo "To enable Testmo integration:"
@@ -161,12 +178,32 @@ jobs:
             echo "⚠️  TESTMO_TOKEN is not set. Test results will not be uploaded to Testmo."
             echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
           else
-            echo "✅ Testmo configuration found. Testing connection..."
-            if testmo automation:run:list --instance "$TESTMO_URL" --limit 1 >/dev/null 2>&1; then
+            echo "✅ Both Testmo credentials found. Testing connection..."
+            echo "🔍 Testing Testmo CLI and connection..."
+            
+            # Test testmo command exists
+            if ! command -v testmo >/dev/null 2>&1; then
+              echo "❌ Testmo CLI not found in PATH"
+              echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+              exit 0
+            fi
+            
+            echo "✅ Testmo CLI found: $(which testmo)"
+            echo "📋 Testmo version: $(testmo --version 2>/dev/null || echo 'Unknown')"
+            
+            # Test connection with more detailed output
+            echo "🌐 Testing connection to: $TESTMO_URL"
+            if testmo automation:run:list --instance "$TESTMO_URL" --limit 1 2>&1; then
               echo "✅ Testmo connection successful!"
               echo "TESTMO_ENABLED=true" >> $GITHUB_ENV
             else
-              echo "❌ Testmo connection failed. Please check your TESTMO_URL and TESTMO_TOKEN."
+              echo "❌ Testmo connection failed."
+              echo "🔍 Trying to get more error details..."
+              
+              # Try a simple connection test with verbose output
+              echo "🔍 Testing basic connectivity..."
+              testmo automation:run:list --instance "$TESTMO_URL" --limit 1 || true
+              
               echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
             fi
           fi
@@ -831,24 +868,58 @@ jobs:
         if: always() && env.TESTMO_ENABLED == 'true'
         run: |
           echo "📊 Submitting test results to Testmo..."
+          echo "🔍 Debug info:"
+          echo "  - TESTMO_ENABLED: $TESTMO_ENABLED"
+          echo "  - TESTMO_URL length: ${#TESTMO_URL}"
+          echo "  - TESTMO_TOKEN length: ${#TESTMO_TOKEN}"
           
           # Check if we have test results to submit
+          echo "🔍 Checking for test result files..."
           if [ ! -f "test-results/maestro-junit.xml" ]; then
-            echo "❌ No test results found to submit to Testmo"
+            echo "❌ No maestro-junit.xml found to submit to Testmo"
+            echo "📁 Current directory contents:"
+            ls -la
+            if [ -d "test-results" ]; then
+              echo "📁 Test results directory contents:"
+              ls -la test-results/
+            else
+              echo "❌ test-results directory doesn't exist"
+            fi
             exit 1
           fi
           
+          # Show what we're submitting
+          echo "✅ Found test results file"
+          echo "📋 Test result files to submit:"
+          ls -la test-results/*.xml
+          
+          echo "📄 Preview of maestro-junit.xml:"
+          head -10 test-results/maestro-junit.xml
+          
+          echo "🚀 Submitting to Testmo..."
+          echo "🔗 Instance: $TESTMO_URL"
+          echo "📋 Project ID: 1 (NOTE: Make sure this matches your actual project ID)"
+          
           # Submit results to Testmo regardless of test success/failure
           # NOTE: Adjust --project-id to match your Testmo project ID
-          testmo automation:run:submit \
+          if testmo automation:run:submit \
             --instance "$TESTMO_URL" \
             --project-id 1 \
             --name "Maestro iOS Tests - ${{ github.event.inputs.project_name }} - PR #${{ github.event.inputs.pr_number }}" \
             --source "maestro-ios" \
             --resources resources.json \
-            --results test-results/*.xml
-            
-          echo "✅ Results successfully submitted to Testmo!"
+            --results test-results/*.xml; then
+            echo "✅ Results successfully submitted to Testmo!"
+          else
+            echo "❌ Failed to submit results to Testmo"
+            echo "🔍 Checking if files exist and are readable:"
+            echo "  - resources.json: $([ -f resources.json ] && echo 'exists' || echo 'missing')"
+            if [ -f resources.json ]; then
+              echo "📄 resources.json content:"
+              cat resources.json
+            fi
+            exit 1
+          fi
         env:
           TESTMO_URL: ${{ secrets.TESTMO_URL }}
           TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
@@ -858,17 +929,30 @@ jobs:
         run: |
           echo "🔍 Final test results check..."
           
+          echo "📊 Environment status:"
+          echo "  - TESTMO_ENABLED: $TESTMO_ENABLED"
+          echo "  - TEST_EXIT_CODE: $TEST_EXIT_CODE"
+          
           if [ "$TESTMO_ENABLED" = "true" ]; then
-            echo "📊 Testmo integration was enabled - results should be available in Testmo"
+            echo "✅ Testmo integration was enabled - results should be available in Testmo"
+            echo "🔗 Check your Testmo instance for the submitted results"
+          elif [ "$TESTMO_ENABLED" = "false" ]; then
+            echo "❌ Testmo integration was disabled due to configuration issues"
+            echo "💡 Check the 'Validate Testmo Configuration' step above for details"
           else
-            echo "⚠️  Testmo integration was disabled"
+            echo "⚠️  Testmo integration status unknown"
             echo "💡 To enable Testmo integration, configure TESTMO_URL and TESTMO_TOKEN secrets"
           fi
           
-          # Show where results are available
+          # Show where results are available locally
           if [ -f "test-results/maestro-junit.xml" ]; then
             echo "📄 JUnit XML results generated: test-results/maestro-junit.xml"
-            echo "📦 Results will be uploaded as GitHub Actions artifacts"
+            echo "📊 Test summary from JUnit XML:"
+            grep -o 'tests="[^"]*"' test-results/maestro-junit.xml || echo "Could not parse test count"
+            grep -o 'failures="[^"]*"' test-results/maestro-junit.xml || echo "Could not parse failure count"
+            echo "💾 Artifact uploads are currently disabled (to save storage quota)"
+          else
+            echo "❌ No JUnit XML results found"
           fi
           
           # Exit with the original test exit code to preserve workflow status
@@ -879,41 +963,44 @@ jobs:
             echo "✅ All tests passed"
           fi
           
-      - name: Upload JUnit Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-ios-junit-results-${{ github.run_number }}
-          path: |
-            test-results/*.xml
-            test-results/**/*.xml
-          retention-days: 30
+      # Artifact uploads disabled to save storage quota during testing
+      # Uncomment these steps when you need to debug test issues
+      
+      # - name: Upload JUnit Test Results
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: maestro-ios-junit-results-${{ github.run_number }}
+      #     path: |
+      #       test-results/*.xml
+      #       test-results/**/*.xml
+      #     retention-days: 30
 
-      - name: Upload Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-ios-test-reports-${{ github.run_number }}
-          path: |
-            ~/.maestro/tests/**/*
-            **/test-results/**
-            **/maestro-results/**
-          retention-days: 30
+      # - name: Upload Test Reports
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: maestro-ios-test-reports-${{ github.run_number }}
+      #     path: |
+      #       ~/.maestro/tests/**/*
+      #       **/test-results/**
+      #       **/maestro-results/**
+      #     retention-days: 30
           
-      - name: Upload Debug Artifacts (Screenshots & Logs)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: maestro-ios-debug-artifacts-${{ github.run_number }}
-          path: |
-            ~/.maestro/tests/**/screenshots/**
-            ~/.maestro/tests/**/logs/**
-            ~/.maestro/tests/**/*.png
-            ~/.maestro/tests/**/*.jpg
-            ~/.maestro/tests/**/*.log
-            ~/.maestro/tests/**/*.xml
-            ~/.maestro/tests/**/*.json
-          retention-days: 30
+      # - name: Upload Debug Artifacts (Screenshots & Logs)
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: maestro-ios-debug-artifacts-${{ github.run_number }}
+      #     path: |
+      #       ~/.maestro/tests/**/screenshots/**
+      #       ~/.maestro/tests/**/logs/**
+      #       ~/.maestro/tests/**/*.png
+      #       ~/.maestro/tests/**/*.jpg
+      #       ~/.maestro/tests/**/*.log
+      #       ~/.maestro/tests/**/*.xml
+      #       ~/.maestro/tests/**/*.json
+      #     retention-days: 30
           
       - name: Generate Test Summary
         if: always()
