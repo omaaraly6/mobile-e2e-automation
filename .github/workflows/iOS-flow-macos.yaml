@@ -99,7 +99,22 @@ jobs:
             testmo --version
           else
             echo "📦 Installing Testmo CLI..."
-            npm install -g @testmo/testmo-cli
+            echo "🔍 npm version: $(npm --version)"
+            echo "🔍 Node.js version: $(node --version)"
+            
+            # Install with verbose output to catch any issues
+            if npm install -g @testmo/testmo-cli; then
+              echo "✅ Testmo CLI installation completed"
+              echo "🔍 Checking installation..."
+              which testmo || echo "❌ testmo not found in PATH after installation"
+              testmo --version || echo "❌ testmo command failed"
+              echo "🔍 PATH: $PATH"
+              echo "🔍 npm global packages:"
+              npm list -g --depth=0 | grep testmo || echo "testmo not found in npm list"
+            else
+              echo "❌ Failed to install Testmo CLI"
+              exit 1
+            fi
           fi
           
       - name: Set Maestro Timeout Environment Variable
@@ -149,6 +164,7 @@ jobs:
       - name: Validate Testmo Configuration
         run: |
           echo "🔍 Validating Testmo configuration..."
+          echo "======================================="
           
           # Debug: Show if variables are set (but not their values for security)
           echo "🔍 Environment variable check:"
@@ -166,47 +182,73 @@ jobs:
             echo "❌ TESTMO_TOKEN is not set"
           fi
           
-          # Validate configuration
+          echo ""
+          echo "🔍 Step-by-step validation:"
+          
+          # Step 1: Check TESTMO_URL
           if [ -z "$TESTMO_URL" ]; then
-            echo "⚠️  TESTMO_URL is not set. Test results will not be uploaded to Testmo."
+            echo "❌ Step 1 FAILED: TESTMO_URL is not set"
+            echo "⚠️  Test results will not be uploaded to Testmo."
             echo "To enable Testmo integration:"
             echo "1. Go to your repository Settings > Secrets and variables > Actions"
             echo "2. Add TESTMO_URL secret with your Testmo instance URL"
             echo "3. Add TESTMO_TOKEN secret with your API token from Testmo"
             echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
-          elif [ -z "$TESTMO_TOKEN" ]; then
-            echo "⚠️  TESTMO_TOKEN is not set. Test results will not be uploaded to Testmo."
-            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
-          else
-            echo "✅ Both Testmo credentials found. Testing connection..."
-            echo "🔍 Testing Testmo CLI and connection..."
-            
-            # Test testmo command exists
-            if ! command -v testmo >/dev/null 2>&1; then
-              echo "❌ Testmo CLI not found in PATH"
-              echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
-              exit 0
-            fi
-            
-            echo "✅ Testmo CLI found: $(which testmo)"
-            echo "📋 Testmo version: $(testmo --version 2>/dev/null || echo 'Unknown')"
-            
-            # Test connection with more detailed output
-            echo "🌐 Testing connection to: $TESTMO_URL"
-            if testmo automation:run:list --instance "$TESTMO_URL" --limit 1 2>&1; then
-              echo "✅ Testmo connection successful!"
-              echo "TESTMO_ENABLED=true" >> $GITHUB_ENV
-            else
-              echo "❌ Testmo connection failed."
-              echo "🔍 Trying to get more error details..."
-              
-              # Try a simple connection test with verbose output
-              echo "🔍 Testing basic connectivity..."
-              testmo automation:run:list --instance "$TESTMO_URL" --limit 1 || true
-              
-              echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
-            fi
+            exit 0
           fi
+          echo "✅ Step 1 PASSED: TESTMO_URL is set"
+          
+          # Step 2: Check TESTMO_TOKEN
+          if [ -z "$TESTMO_TOKEN" ]; then
+            echo "❌ Step 2 FAILED: TESTMO_TOKEN is not set"
+            echo "⚠️  Test results will not be uploaded to Testmo."
+            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "✅ Step 2 PASSED: TESTMO_TOKEN is set"
+          
+          # Step 3: Check Testmo CLI
+          echo "🔍 Step 3: Testing Testmo CLI..."
+          if ! command -v testmo >/dev/null 2>&1; then
+            echo "❌ Step 3 FAILED: Testmo CLI not found in PATH"
+            echo "🔍 Debugging info:"
+            echo "  PATH: $PATH"
+            echo "  which testmo: $(which testmo 2>&1 || echo 'not found')"
+            echo "  ls /usr/local/bin/testmo: $(ls -la /usr/local/bin/testmo 2>&1 || echo 'not found')"
+            echo "  npm list -g | grep testmo: $(npm list -g 2>/dev/null | grep testmo || echo 'not found')"
+            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "✅ Step 3 PASSED: Testmo CLI found at $(which testmo)"
+          echo "📋 Testmo version: $(testmo --version 2>/dev/null || echo 'Version check failed')"
+          
+          # Step 4: Test connection
+          echo "🔍 Step 4: Testing connection..."
+          echo "🌐 Testing connection to: $TESTMO_URL"
+          
+          # Capture both stdout and stderr
+          CONNECTION_OUTPUT=$(testmo automation:run:list --instance "$TESTMO_URL" --limit 1 2>&1)
+          CONNECTION_EXIT_CODE=$?
+          
+          if [ $CONNECTION_EXIT_CODE -eq 0 ]; then
+            echo "✅ Step 4 PASSED: Testmo connection successful!"
+            echo "✅ ALL STEPS PASSED - Enabling Testmo integration"
+            echo "TESTMO_ENABLED=true" >> $GITHUB_ENV
+          else
+            echo "❌ Step 4 FAILED: Testmo connection failed (exit code: $CONNECTION_EXIT_CODE)"
+            echo "🔍 Connection error output:"
+            echo "$CONNECTION_OUTPUT"
+            echo ""
+            echo "🔍 Possible issues:"
+            echo "  - TESTMO_URL might be incorrect"
+            echo "  - TESTMO_TOKEN might be invalid or expired"
+            echo "  - Network connectivity issues"
+            echo "  - Testmo instance might be down"
+            echo "❌ VALIDATION FAILED - Disabling Testmo integration"
+            echo "TESTMO_ENABLED=false" >> $GITHUB_ENV
+          fi
+          
+          echo "======================================="
         env:
           TESTMO_URL: ${{ secrets.TESTMO_URL }}
           TESTMO_TOKEN: ${{ secrets.TESTMO_TOKEN }}
