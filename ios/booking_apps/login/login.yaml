@@ -1,4 +1,4 @@
-appId: com.zeal.challaztopfade
+appId: ${appId}
 name: Booking Apps - Verify member can login successfully
 tags:
     - booking_apps
@@ -6,11 +6,19 @@ onFlowStart:
     - runScript: ../pages/loginpage.js
 ---
 - launchApp:
-    appId: "com.zeal.challaztopfade"
+    appId: "${appId}"
     clearState: true
-- assertVisible: "Loyalty Card"
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.challaztopfade'}
+    commands:
+        - assertVisible: "Loyalty Card"
 - tapOn: "Getting Started"
-- assertVisible: "Welcome to Challaz Topfade"
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.challaztopfade'}
+    commands:
+        - assertVisible: "Welcome to Challaz Topfade"
 - tapOn:
     id: ${output.loginpage.CountryCode}
 - waitForAnimationToEnd:
@@ -32,3 +40,4 @@ onFlowStart:
 - copyTextFrom:
     id: "otp"
 - pasteText
+- assertVisible: "What would you like to do today?"

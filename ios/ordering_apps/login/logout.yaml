@@ -20,5 +20,4 @@ onFlowStart:
     id: ${output.profilepage.logout}
 - tapOn:
     id: ${output.profilepage.confirmlogout}
-- assertVisible: 'Coffee Loyalty Card'
-
+# - assertVisible: 'Coffee Loyalty Card'

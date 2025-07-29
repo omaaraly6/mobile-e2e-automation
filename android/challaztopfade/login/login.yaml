@@ -1,4 +1,4 @@
-appId: com.zeal.challaztopfade
+appId: ${appId}
 name: Booking Apps - Verify member can login successfully
 tags:
     - booking_apps
@@ -6,7 +6,7 @@ onFlowStart:
     - runScript: ../pages/loginpage.js
 ---
 - launchApp:
-    appId: "com.zeal.challaztopfade"
+    appId: "${appId}"
     clearState: true
 - assertVisible: "Loyalty Card"
 - tapOn: "Getting Started"

@@ -1,4 +1,4 @@
-appId: com.zeal.challaztopfade
+appId: ${appId}
 name: Booking Apps - Verify member can logout successfully
 tags:
   - booking_apps
