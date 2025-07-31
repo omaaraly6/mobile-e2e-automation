@@ -1,0 +1,13 @@
+appId: com.zeal.brgr
+onFlowStart:
+  - runScript: ../pages/loginpages.js
+  - runFlow: ../login/login.yaml
+name: BRGR - Verify member can logout successfully
+---
+- tapOn:
+    id: "menu"
+- tapOn:
+    id: "logout"
+- tapOn: "YES"
+- assertVisible:
+    id: "sign up or login"

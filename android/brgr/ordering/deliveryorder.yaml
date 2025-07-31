@@ -1,0 +1,26 @@
+appId: com.zeal.brgr
+name: BRGR - Verify member can complete a delivery order successfully
+onFlowStart:
+  - runScript: ../pages/orderingpages.js
+  - runFlow: ../login/login.yaml
+---
+- tapOn:
+    id: "Start new order"
+- tapOn:
+    id: ${output.orderingpages.deliveryordertype}
+- tapOn:
+    id: ${output.orderingpages.address}
+- tapOn:
+    id: ${output.orderingpages.continuebtn}
+- tapOn:
+    id: ${output.orderingpages.category}
+- tapOn:
+    id: ${output.orderingpages.item}
+- tapOn:
+    id: ${output.orderingpages.addtoboxbtn}
+- tapOn:
+    id: ${output.orderingpages.checkoutbtn}
+- tapOn:
+    id: ${output.orderingpages.placeorderbtn}
+    waitToSettleTimeoutMs: 1000
+- assertVisible: "Your order has been placed! "

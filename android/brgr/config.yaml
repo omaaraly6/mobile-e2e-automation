@@ -1,0 +1,9 @@
+flows:
+  - "login/*"
+  - "ordering/*"
+executionOrder:
+    flowsOrder:
+        - BRGR - Verify member can login successfully
+        - BRGR - Verify member can complete a delivery order successfully
+        - BRGR - Verify member can cancel a delivery order successfully
+        - BRGR - Verify member can logout successfully

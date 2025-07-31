@@ -1,0 +1,32 @@
+appId: com.zeal.brgr
+onFlowStart:
+  - runScript: ../pages/loginpages.js
+name: BRGR - Verify member can login successfully
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    text: "Next"
+    repeat: 3
+    delay: 1000
+    index: 1
+- tapOn:
+    text: "Get Started"
+    index: 1
+- tapOn: 
+    id: ${output.loginpages.loginbtn}
+- tapOn: 
+    id: ${output.loginpages.termsconditionscb}
+- tapOn: 
+    id: ${output.loginpages.continuebtn}
+- tapOn:
+    id: ${output.loginpages.phonenumber}
+- inputText: "01020000002"
+- tapOn: 
+    id: ${output.loginpages.continuebtn}
+- waitForAnimationToEnd:
+    timeout: 1000
+- copyTextFrom:
+    id: "otp"
+- pasteText
+- assertVisible: "Start new order"
