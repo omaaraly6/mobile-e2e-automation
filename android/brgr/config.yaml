@@ -6,4 +6,6 @@ executionOrder:
         - BRGR - Verify member can login successfully
         - BRGR - Verify member can complete a delivery order successfully
         - BRGR - Verify member can cancel a delivery order successfully
+        - BRGR - Verify member can create a pickup order successfully
+        - BRGR - Verify member can cancel a pickup order successfully
         - BRGR - Verify member can logout successfully

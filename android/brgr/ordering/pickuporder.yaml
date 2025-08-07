@@ -1,0 +1,31 @@
+appId: com.zeal.brgr
+name: BRGR - Verify member can create a pickup order successfully
+onFlowStart:
+  - runScript: ../pages/orderingpages.js
+  - runFlow: ../login/login.yaml
+---
+- tapOn:
+    id: "Start new order"
+- tapOn:
+    id: "${output.orderingpages.pickupordertype}"
+- scrollUntilVisible:
+    element:
+      id: ${output.orderingpages.branch}
+- tapOn:
+    id: ${output.orderingpages.branch}
+- tapOn:
+    id: ${output.orderingpages.category}
+- tapOn:
+    id: ${output.orderingpages.item}
+- tapOn:
+    id: ${output.orderingpages.addtoboxbtn}
+- tapOn:
+    id: ${output.orderingpages.checkoutbtn}
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "8256"
+- tapOn:
+    id: ${output.orderingpages.placeorderbtn}
+    waitToSettleTimeoutMs: 1000
+- assertVisible: "Your order has been placed! "
