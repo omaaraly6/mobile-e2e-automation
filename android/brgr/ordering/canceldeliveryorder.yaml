@@ -1,10 +1,6 @@
 appId: com.zeal.brgr
 name: BRGR - Verify member can cancel a delivery order successfully
-# onFlowStart:
-#   - runFlow: ../login/login.yaml
 ---
 - tapOn: "Cancel order"
 - tapOn: "Yes, Cancel"
 - assertVisible: "your order is cancelled! "
-# - tapOn:
-#     id: "return to home"

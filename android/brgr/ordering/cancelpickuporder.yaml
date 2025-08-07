@@ -1,0 +1,9 @@
+appId: com.zeal.brgr
+name: BRGR - Verify member can cancel a pickup order successfully
+---
+- scrollUntilVisible: 
+    element:
+      text: "Cancel order"
+- tapOn: "Cancel order"
+- tapOn: "Yes, Cancel"
+- assertVisible: "your order is cancelled! "
