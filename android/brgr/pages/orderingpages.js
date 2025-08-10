@@ -6,6 +6,8 @@ output.orderingpages = {
     continuebtn: "continue",
     category: "Test Category",
     item: "Test Item",
+    pickupitem: "Pickup Only Item",
+    deliveryitem: "Delivery Only Item",
     addtoboxbtn: "add to box",
     checkoutbtn: "checkout",
     placeorderbtn: "place order"

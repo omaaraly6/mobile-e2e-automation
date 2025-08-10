@@ -1,0 +1,20 @@
+appId: com.zeal.brgr
+onFlowStart:
+  - runScript: ../pages/loginpages.js
+  - runScript: ../pages/orderingpages.js
+  - runFlow: ../login/login.yaml
+name: BRGR - Verify delivery items are not shown in pickup orders
+---
+- tapOn:
+    id: "Start new order"
+- tapOn:
+    id: "${output.orderingpages.pickupordertype}"
+- scrollUntilVisible:
+    element:
+      id: ${output.orderingpages.branch}
+- tapOn:
+    id: ${output.orderingpages.branch}
+- tapOn:
+    id: ${output.orderingpages.category}
+- assertNotVisible: ${output.orderingpages.deliveryitem}
+- assertVisible: ${output.orderingpages.pickupitem}
