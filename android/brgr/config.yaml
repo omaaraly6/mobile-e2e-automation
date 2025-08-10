@@ -1,6 +1,7 @@
 flows:
   - "login/*"
   - "ordering/*"
+  - "item_availability/*"
 executionOrder:
     flowsOrder:
         - BRGR - Verify member can login successfully
