@@ -6,13 +6,11 @@ onFlowStart:
   - runScript: ../pages/navigation.js
   - runScript: ../pages/profilepage.js
   - runScript: ../pages/activity.js
-  # - runFlow: login.yaml
+  - runFlow: login.yaml
 ---
-# - tapOn:
-#         id: ${output.activity.back}
-#         optional: true
 - tapOn:
     id: ${output.navigation.profilepage}
+- scroll
 - scrollUntilVisible:
     element:
       id: ${output.profilepage.logout}
@@ -20,4 +18,23 @@ onFlowStart:
     id: ${output.profilepage.logout}
 - tapOn:
     id: ${output.profilepage.confirmlogout}
-# - assertVisible: 'Coffee Loyalty Card'
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.DancingGoat'}
+    commands:
+        - assertVisible: "Coffee Loyalty Card"
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.coffeeberry'}
+    commands:
+        - assertVisible: "Coffee Loyalty Card"
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.gocrispy'}
+    commands:
+        - assertVisible: "Get Points & Cashback"
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.takosan'}
+    commands:
+        - assertVisible: "Get Points & Rewards"

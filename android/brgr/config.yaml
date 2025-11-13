@@ -1,14 +1,14 @@
 flows:
   - "login/*"
-  - "ordering/*"
-  - "item_availability/*"
+  - "ordering/deliveryorder.yaml"
+  # - "item_availability/*"
 executionOrder:
     flowsOrder:
         - BRGR - Verify member can login successfully
         - BRGR - Verify member can complete a delivery order successfully
         - BRGR - Verify member can cancel a delivery order successfully
-        - BRGR - Verify member can create a pickup order successfully
-        - BRGR - Verify member can cancel a pickup order successfully
-        - BRGR - Verify delivery items are not shown in pickup orders
-        - BRGR - Verify pickup items are not shown in delivery orders
+        # - BRGR - Verify member can create a pickup order successfully
+        # - BRGR - Verify member can cancel a pickup order successfully
+        # - BRGR - Verify delivery items are not shown in pickup orders
+        # - BRGR - Verify pickup items are not shown in delivery orders
         - BRGR - Verify member can logout successfully

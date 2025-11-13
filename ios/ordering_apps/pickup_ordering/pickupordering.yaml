@@ -27,11 +27,50 @@ onFlowStart:
     id: ${output.pickuppages.branch}
 - tapOn: 
     id: ${output.pickuppages.confirm}   
-- tapOn: 
-    id: ${output.menu.category}
-    retryTapIfNoChange: false
-- tapOn: 
-    id: ${output.menu.pickupitem}
+
+## Go Crispy
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.gocrispy'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.gocrispy_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.gocrispy_pickupitem}
+
+## Takosan
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.takosan'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.takosan_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.takosan_pickupitem}
+
+## Dancing Goat
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.DancingGoat'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.dancinggoat_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.dancinggoat_pickupitem}
+
+## Coffee Berry
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.coffeeberry'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.coffeeberry_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.coffeeberry_pickupitem}
 - tapOn: 
     id: ${output.menu.addtobasketbtn}
 - tapOn: 

@@ -19,11 +19,47 @@ onFlowStart:
     id: ${output.deliverypages.address}
 - tapOn:
     id: ${output.deliverypages.confirmbtn}
-- tapOn: 
-    id: ${output.menu.category}
-    retryTapIfNoChange: false
-- tapOn: 
-    id: ${output.menu.deliveryitem}
+
+## Go Crispy
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.gocrispy'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.gocrispy_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.gocrispy_deliveryitem}
+## Takosan
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.takosan'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.takosan_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.takosan_deliveryitem}
+## Dancing Goat
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.DancingGoat'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.dancinggoat_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.dancinggoat_deliveryitem}
+## Coffee Berry
+- runFlow:
+    when:
+      true: ${appId == 'com.zeal.coffeeberry'}
+    commands:
+        - tapOn: 
+            id: ${output.menu.coffeeberry_category}
+            retryTapIfNoChange: false
+        - tapOn: 
+            id: ${output.menu.coffeeberry_deliveryitem}
 - tapOn: 
     id: ${output.menu.addtobasketbtn}
 - tapOn: 

@@ -10,7 +10,7 @@ onFlowStart:
     clearState: true
 - runFlow:
     when:
-      true: ${appId == 'com.zeal.challaztopfade'}
+      true: ${appId == 'com.zeal.challaztopfade' || appId == 'com.zeal.citicuts'}
     commands:
         - assertVisible: "Loyalty Card"
 - tapOn: "Getting Started"
@@ -28,13 +28,17 @@ onFlowStart:
 - inputText: "Egypt"
 - tapOn:
     id:  ${output.loginpage.Egypt}
-    repeat: 2
+- tapOn:
+    id:  ${output.loginpage.Egypt}
+    # repeat: 2
+    # delay: 3000
 - tapOn:
     id: ${output.loginpage.PhoneNumber}
-- inputText: "01000000001"
+- inputText: "01020000002"
 - tapOn: 
     text: "Continue"
-    repeat: 2
+- tapOn: 
+    text: "Continue"    
 - waitForAnimationToEnd:
     timeout: 1000
 - copyTextFrom:

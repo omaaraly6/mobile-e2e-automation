@@ -32,10 +32,13 @@ onFlowStart:
     visibilityPercentage: 100
 - tapOn:
     id: ${output.bookingpage.slot}
+    retryTapIfNoChange: true
     optional: false
 - tapOn:
     text: 'continue'
     optional: false
+- waitForAnimationToEnd:
+    timeout: 2000
 - scrollUntilVisible:
     element:
       id: ${output.bookingpage.confirmbooking}
