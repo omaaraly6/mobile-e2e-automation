@@ -31,6 +31,6 @@ This repository contains automation scripts for both Android and iOS mobile appl
 2. Run a script, for example:
 
 - Android:
-  ```maestro test android/booking_apps/```
+  ```maestro test -e appId=com.zeal.XXX android/booking_apps/```
 - iOS:
-  ```maestro test ios/ordering_apps/```
+  ```maestro test -e appId=com.zeal.XXX ios/ordering_apps/```
