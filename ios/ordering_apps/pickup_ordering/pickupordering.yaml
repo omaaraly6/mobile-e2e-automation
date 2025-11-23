@@ -23,6 +23,7 @@ onFlowStart:
 - scrollUntilVisible:
     element:
         id: ${output.pickuppages.branch}
+    centerElement: true
 - tapOn: 
     id: ${output.pickuppages.branch}
 - tapOn: 

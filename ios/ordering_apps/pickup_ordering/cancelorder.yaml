@@ -5,7 +5,8 @@ tags:
 onFlowStart:
   - runScript: ../pages/activity.js
 ---
-- tapOn: "Cancel Order"
+- tapOn:
+    id: "Cancel order"
 - tapOn:
     id: ${output.activity.confirmcancellation}
 - assertVisible: "Order Canceled!"
